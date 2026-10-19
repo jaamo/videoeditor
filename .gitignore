@@ -1,0 +1,8 @@
+node_modules/
+out/
+cache/
+.env
+
+# Music tracks: large, and licensed separately. Put a track at assets/music/track.mp3.
+assets/music/*
+!assets/music/.gitkeep

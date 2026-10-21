@@ -6,3 +6,14 @@ cache/
 # Music tracks: large, and licensed separately. Put a track at assets/music/track.mp3.
 assets/music/*
 !assets/music/.gitkeep
+
+# Whisper: built locally by npm run transcribe (whisper.cpp + model)
+whisper.cpp/
+projects/*/transcript.audio.wav
+
+# Per-clip transcriptions are a cache
+projects/*/clips/
+
+# Screen recordings: large media, like the music
+screencasts/*
+!screencasts/.gitkeep

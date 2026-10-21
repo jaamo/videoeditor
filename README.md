@@ -79,6 +79,30 @@ mic check passes and its level meter moves.
 - **A bad ending:** if a take ends with a stray sound, cut it by hand with the step's
   `voiceEnd: { fi: 3190 }` (ms into the clip, per language), or get a new take with `--revoice`.
 
+## Editing your own screen recording
+
+For a recording you made yourself (OBS or similar), narrated in your own voice:
+
+```bash
+npm run transcribe -- "screencasts/2026-10-19 16-08-24.mp4"   # → projects/<name>/transcript.txt
+#   …write projects/<name>/project.yaml (Claude can draft it from the transcript)
+npm run cut -- 2026-10-19-16-08-24 --studio                    # preview
+npm run cut -- 2026-10-19-16-08-24                             # → out/<name>/<name>.mp4
+```
+
+- **Transcription is local**: whisper.cpp with the large-v3-turbo model, on the CPU. The first
+  run builds it and downloads the model (~1.6 GB) into `whisper.cpp/`. It needs `make`, `g++`
+  and `git`.
+- **The project file** lists the clips to keep, in order: `from`/`to` in the recording,
+  `zoom` (an area in the recording's pixels, or a list of camera moves), `speed` for waits,
+  plus title, end card, music and `replace` for Whisper's spelling. Comments in the file
+  explain each field.
+- **Captions** come from transcribing each kept clip on its own (cached in
+  `projects/<name>/clips/`): over a whole recording Whisper's timings drift across silences.
+  Change a clip's times and only that clip is transcribed again.
+- **Sound**: the recording's voice is cleaned first (DC offset removed, the less clipped
+  channel picked, level evened out) and plays instead of the recording's own track.
+
 ## How it fits together
 
 1. **voice** (`src/voice.ts`): each line → mp3 + word timings, cached in `cache/tts`.

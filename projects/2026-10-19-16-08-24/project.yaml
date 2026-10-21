@@ -1,0 +1,132 @@
+# Edit of the 2026-10-19 screencast: from an interview with Maya to a published post.
+#
+# Render:   npm run cut -- 2026-10-19-16-08-24
+# Preview:  npm run cut -- 2026-10-19-16-08-24 --studio
+#
+# Each clip is a piece of the recording, played in this order. Times are where it is in
+# the recording (mm:ss.s, see transcript.txt). Change them, delete clips, reorder them.
+#   zoom   the area to show: [x, y, width, height] in the recording's 1920×1080 pixels,
+#          or "full". A list moves the camera during the clip: `at` = seconds into it.
+#   speed  play faster (muted), for waiting.
+#   say    what is said, only a note for you. Captions come from transcribing the clip itself.
+
+source: screencasts/2026-10-19 16-08-24.mp4
+
+title:
+  headline: Yhdestä haastattelusta viikon sisällöt
+  sub: Outerview
+end:
+  headline: Sinä puhut. Me kirjoitamme.
+  sub: Sinä julkaiset.
+  url: outerview.app
+
+music: assets/music/track.mp3
+musicVolume: 0.1
+
+# Whisper's spelling, fixed in the captions.
+replace:
+  Audiview -tuotteesta: Outerview-tuotteesta
+  Audiview: Outerview
+  Audiview-tuotteesta: Outerview-tuotteesta
+  Maijan: Mayan
+  Maija: Maya
+  limioilla: linjoilla
+  huukki: hook
+  tekoille: tekoälyn
+  kuten kai: Kun AI
+  kova on: Kun oon
+  tekoäly meille: tekoälyn meille
+  voicei: voicea
+  haastatteluperusteella: haastattelun perusteella
+
+clips:
+  # --- intro --------------------------------------------------------------------------
+  - from: "00:03.6"
+    to: "00:11.1"
+    say: Moikka! Mä olisin näyttänyt meidän Outerview-tuotteesta, että miten helppo sisällön muokkaaminen on.
+    zoom: [480, 40, 1160, 900]
+
+  # The first "Jos mä haluan keskustella jostain aiheesta" (0:12) was a retake: dropped.
+  - from: "00:17.8"
+    to: "00:27.9"
+    say: jos mä haluan keskustella jostain aiheesta, niin mä otan täältä vaan haastattelun käyntiin ja aloitan keskustelun meidän tekoälyagentti Mayan kanssa.
+    zoom:
+      - { at: 0, zoom: [460, 80, 900, 400] }   # "Just start talking"
+      - { at: 6, zoom: full }                  # mic check, call starting
+
+  # --- the interview ----------------------------------------------------------------------
+  - from: "00:27.9"
+    to: "00:38.6"
+    say: (Maya) Moikka Jaakko, kiva kun ollaan linjoilla. Tää menee suunnilleen niin, että … sä valitset yhden.
+    zoom: [560, 120, 800, 760]   # Maya's orb
+
+  # Rest of Maya's introduction (0:38.6–0:50) dropped.
+  - from: "00:50.0"
+    to: "01:01.9"
+    say: Joo, mä haluaisin puhua siitä, miten … me vaan unohdetaan, että me on tehty se.
+    zoom: full
+
+  # Hanging up, rating the call, finding the studio (1:02–1:19) dropped.
+  # --- writing a post ------------------------------------------------------------------
+  - from: "01:19.0"
+    to: "01:35.6"
+    say: Kun mä oon käynyt haastattelun, mä voin luoda sen pohjalta uuden sisällön … laitetaan tekoälyhommiin.
+    zoom:
+      - { at: 0, zoom: full }
+      - { at: 2.6, zoom: [500, 360, 920, 470] }   # "What would you like to create?" / topics
+      - { at: 15, zoom: full }
+
+  - from: "01:35.6"
+    to: "01:59.2"
+    speed: 6   # the post being written
+
+  - from: "01:59.2"
+    to: "02:16.0"
+    say: Siinä on tekoälyn meille kirjoittama sisältö. Me voidaan avata se, muokata sitä omin käsin, tai pyytää tekoälyä tekemään muokkauksia.
+    zoom:
+      - { at: 0, zoom: full }
+      - { at: 2.8, zoom: [420, 120, 670, 860] }   # the post, open in the editor
+      - { at: 9, zoom: [1520, 60, 390, 1020] }    # Maya's chat column
+
+  # --- asking Maya for a change ------------------------------------------------------------
+  - from: "02:19.7"
+    to: "02:27.6"
+    say: Kirjoita koukuttavampi alku.
+    zoom: [1520, 700, 390, 380]   # the message box
+
+  - from: "02:27.6"
+    to: "02:43.6"
+    speed: 6   # "Working on it…"
+    zoom: [1520, 60, 390, 600]
+
+  - from: "02:43.6"
+    to: "02:48.3"
+    say: Kun AI on tehnyt muutoksia, me voidaan tästä joko hylätä tai hyväksyä ne.
+    zoom: [440, 220, 580, 120]   # the change, with Reject / Approve
+
+  # --- analysis ----------------------------------------------------------------------------
+  - from: "02:48.3"
+    to: "03:03.7"
+    say: Me voidaan myös analysoida meidän postausta. Eli tämä kertoo meille, mikä meidän sisällössä oli hyvää ja mitä parannettavaa siinä vielä olisi.
+    zoom: [1520, 60, 390, 1020]
+
+  - from: "03:03.7"
+    to: "03:19.6"
+    speed: 6   # analysing
+    zoom: [1520, 60, 390, 1020]
+
+  - from: "03:19.6"
+    to: "03:36.0"
+    say: Tästä me nähdään, vastaako se sisältö meidän omaa tone of voicea … Sitten kun meidän postaus on valmis, me voidaan julkaista se täältä suoraan LinkedInissä.
+    zoom:
+      - { at: 0, zoom: [1530, 320, 370, 650] }    # the analysis
+      - { at: 13.6, zoom: [470, 80, 590, 360] }   # publish dialog
+
+  # --- close -------------------------------------------------------------------------------
+  - from: "03:36.0"
+    to: "03:45.1"
+    say: Ja näin helposti yhden haastattelun perusteella meille syntyy viikon sisällöt tosi nopeasti.
+    zoom:
+      - { at: 0, zoom: [470, 80, 590, 360] }
+      - { at: 2.5, zoom: full }
+  # "Kiitos. Kiitos." (3:45) dropped: the end card says goodbye.

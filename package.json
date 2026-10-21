@@ -7,7 +7,9 @@
     "studio": "node --env-file=.env --import=tsx src/cli.ts --studio",
     "check": "tsc",
     "shot": "node --env-file=.env --import=tsx src/shot.ts",
-    "say": "node --env-file=.env --import=tsx src/say.ts"
+    "say": "node --env-file=.env --import=tsx src/say.ts",
+    "transcribe": "node --env-file=.env --import=tsx src/screencast/transcribe.ts",
+    "cut": "node --env-file=.env --import=tsx src/screencast/cut.ts"
   },
   "author": "",
   "license": "ISC",
@@ -15,13 +17,15 @@
   "dependencies": {
     "@remotion/bundler": "4.0.536",
     "@remotion/cli": "4.0.536",
+    "@remotion/install-whisper-cpp": "4.0.536",
     "@remotion/media-utils": "4.0.536",
     "@remotion/renderer": "4.0.536",
     "pg": "8.23.1",
     "playwright": "1.64.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "remotion": "4.0.536"
+    "remotion": "4.0.536",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@types/node": "24.10.1",

@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
-import {
-  AbsoluteFill, Audio, Sequence, continueRender, delayRender, interpolate, staticFile, useCurrentFrame, useVideoConfig,
-} from "remotion";
+import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useVideoConfig } from "remotion";
 import type { Manifest } from "../types";
 import { Captions } from "./Captions";
 import { EndCard } from "./EndCard";
 import { ScreenScene } from "./ScreenScene";
 import { FADE_MS, OUTRO_MS, theme, warmBackground } from "./theme";
+import { DuckedMusic, Fade, useBrandFont } from "./shared";
 import { TitleCard } from "./TitleCard";
 
 export const Video = (m: Manifest) => {
@@ -50,7 +48,7 @@ export const Video = (m: Manifest) => {
         ) : null,
       )}
 
-      {m.music && <Music src={m.music} manifest={m} totalFrames={total} />}
+      {m.music && <DuckedMusic src={m.music} speaking={speakingRanges(m)} totalFrames={total} />}
     </AbsoluteFill>
   );
 };
@@ -70,55 +68,11 @@ const Voice = ({ src, endMs }: { src: string; endMs?: number }) => {
   );
 };
 
-const Fade = ({ frames, children }: { frames: number; children: React.ReactNode }) => {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, frames], [0, 1], { extrapolateRight: "clamp" });
-  return <AbsoluteFill style={{ opacity }}>{children}</AbsoluteFill>;
-};
-
-/** Music under the whole video: fades in and out, and ducks while the voice is talking. */
-const Music = ({ src, manifest, totalFrames }: { src: string; manifest: Manifest; totalFrames: number }) => {
-  const { fps } = useVideoConfig();
-  const lines = manifest.steps.map((s) => ({ at: manifest.introMs + s.startMs, words: s.words }));
-  if (manifest.intro) lines.push({ at: manifest.intro.startMs, words: manifest.intro.words });
-  const speaking = lines
+/** When the voice is talking, in ms from the start of the video. */
+function speakingRanges(m: Manifest) {
+  const lines = m.steps.map((s) => ({ at: m.introMs + s.startMs, words: s.words }));
+  if (m.intro) lines.push({ at: m.intro.startMs, words: m.intro.words });
+  return lines
     .filter((l) => l.words.length)
     .map((l) => [l.at + l.words[0].startMs, l.at + l.words.at(-1)!.endMs] as const);
-  const BASE = 0.32;
-  const DUCKED = 0.1;
-  return (
-    <Audio
-      src={staticFile(src)}
-      loop
-      volume={(frame) => {
-        const ms = (frame / fps) * 1000;
-        // 1 while speaking, easing to 0 over 300ms either side.
-        let duck = 0;
-        for (const [a, b] of speaking) {
-          const d = ms < a ? a - ms : ms > b ? ms - b : 0;
-          duck = Math.max(duck, interpolate(d, [0, 300], [1, 0], { extrapolateRight: "clamp" }));
-        }
-        const fade = Math.min(
-          interpolate(frame, [0, fps * 0.6], [0, 1], { extrapolateRight: "clamp" }),
-          interpolate(frame, [totalFrames - fps * 1.5, totalFrames], [1, 0], { extrapolateLeft: "clamp" }),
-        );
-        return (BASE - (BASE - DUCKED) * duck) * fade;
-      }}
-    />
-  );
-};
-
-/** Hold every frame until the brand font is in, so none renders in the fallback face. */
-function useBrandFont() {
-  const [handle] = useState(() => delayRender("Loading brand font"));
-  useEffect(() => {
-    const font = new FontFace("Google Sans Flex", `url(${staticFile("brand/google-sans-flex.woff2")}) format("woff2")`, {
-      weight: "100 900",
-      stretch: "25% 151%",
-    });
-    font
-      .load()
-      .then(() => document.fonts.add(font))
-      .finally(() => continueRender(handle));
-  }, [handle]);
 }

@@ -16,11 +16,19 @@ export function overviewCam(vw: number, vh: number): Cam {
   return { cx: vw / 2, cy: vh / 2, s: W / vw };
 }
 
-/** Frame a box: as close as it fits, never tighter than MAX_SCALE, never wider than overview. */
-export function camFor(box: Box | null, vw: number, vh: number): Cam {
+export type CamLimits = {
+  /** How far the footage can be enlarged before it goes soft. */
+  maxScale?: number;
+  /** How much of the frame's height a box may fill. Half keeps it clear of the captions. */
+  fitHeight?: number;
+};
+
+/** Frame a box: as close as it fits, within the limits, never wider than overview. */
+export function camFor(box: Box | null, vw: number, vh: number, limits: CamLimits = {}): Cam {
+  const { maxScale = MAX_SCALE, fitHeight = 0.5 } = limits;
   const overview = overviewCam(vw, vh);
   if (!box) return overview;
-  const s = clamp(Math.min((W * 0.86) / box.width, (H * 0.5) / box.height), overview.s, MAX_SCALE);
+  const s = clamp(Math.min((W * 0.86) / box.width, (H * fitHeight) / box.height), overview.s, maxScale);
   return clampCenter({ cx: box.x + box.width / 2, cy: box.y + box.height / 2, s }, vw, vh);
 }
 
@@ -39,12 +47,12 @@ type Key = { t: number; target: Cam; from: Cam };
  * Turn camera events into keyframes. Each move starts from wherever the camera actually
  * is at that moment, so a new target mid-transition redirects smoothly instead of jumping.
  */
-export function cameraTrack(events: TimelineEvent[], vw: number, vh: number): (ms: number) => Cam {
+export function cameraTrack(events: TimelineEvent[], vw: number, vh: number, limits: CamLimits = {}): (ms: number) => Cam {
   const start = overviewCam(vw, vh);
   const keys: Key[] = [];
   for (const e of events) {
     if (e.type !== "camera") continue;
-    const target = camFor(e.box, vw, vh);
+    const target = camFor(e.box, vw, vh, limits);
     const from = e.instant ? target : keys.length ? sample(keys[keys.length - 1], e.t) : start;
     keys.push({ t: e.t, target, from });
   }

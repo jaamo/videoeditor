@@ -112,6 +112,37 @@ export type ManifestStep = {
   words: Word[];
 };
 
+/** One kept piece of a screen recording, placed in the video. Times in ms. */
+export type ScreencastClip = {
+  /** Where it is in the recording. */
+  fromMs: number;
+  toMs: number;
+  speed: number;
+  muted: boolean;
+  /** Where it starts in the video's screen part, and how long it lasts there. */
+  startMs: number;
+  durationMs: number;
+  /** Camera moves, `atMs` into the clip; box null = whole screen. */
+  cams: { atMs: number; box: Box | null }[];
+  /** Caption words, timed from the clip's start. */
+  words: Word[];
+};
+
+export type ScreencastManifest = {
+  fps: number;
+  /** Published path of the recording, and its size in pixels. */
+  source: string;
+  /** The recording's voice, cleaned (see src/screencast/voice.ts); plays instead of its sound. */
+  voice: string;
+  sourceSize: { width: number; height: number };
+  title: Card;
+  end: Card;
+  music?: string;
+  musicVolume: number;
+  screenDurationMs: number;
+  clips: ScreencastClip[];
+};
+
 export type Manifest = {
   fps: number;
   viewport: { width: number; height: number };

@@ -1,19 +1,13 @@
 import { useMemo } from "react";
 import { AbsoluteFill, Audio, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import type { ScreencastClip, ScreencastManifest } from "../types";
-import { cameraTrack, H, overviewCam, W } from "./camera";
+import { cameraTrack, H, overviewCam, SCREENCAST_CAMERA, W } from "./camera";
 import { Captions } from "./Captions";
 import { EndCard } from "./EndCard";
 import { DuckedMusic, Fade, useBrandFont } from "./shared";
 import { FADE_MS, INTRO_MS, OUTRO_MS, theme, warmBackground } from "./theme";
 import { TitleCard } from "./TitleCard";
 
-/**
- * The recording is 1×: past 2× the footage goes soft (Playwright captures are 2× and allow
- * more). Its zoom targets are often whole columns, tall and narrow, so they may fill most of
- * the frame's height, under the captions too.
- */
-const CAMERA = { maxScale: 2, fitHeight: 0.8 };
 /** Fade sound in and out at each cut, so the joins don't click. */
 const AUDIO_FADE_MS = 40;
 
@@ -69,7 +63,7 @@ const Clip = ({ clip: c, manifest: m }: { clip: ScreencastClip; manifest: Screen
         c.cams.map((k, i) => ({ type: "camera" as const, t: k.atMs, box: k.box, instant: i === 0 })),
         vw,
         vh,
-        CAMERA,
+        SCREENCAST_CAMERA,
       ),
     [c.cams, vw, vh],
   );

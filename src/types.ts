@@ -159,3 +159,22 @@ export type Manifest = {
   events: TimelineEvent[];
   steps: ManifestStep[];
 };
+
+/** A project of projects/: its cut, made in Kdenlive, to finish in Remotion (src/remotion/Final.tsx). */
+export type FinalManifest = {
+  fps: number;
+  title: string;
+  /** Published paths of the footage, its cleaned voice and the music. */
+  footage: string;
+  voice: string;
+  music?: string;
+  musicVolume: number;
+  /** The cut, in ms from its start: pieces of the footage, and of the voice (`fromMs` in the file). */
+  video: { atMs: number; fromMs: number; durationMs: number; speed: number }[];
+  audio: { atMs: number; fromMs: number; durationMs: number }[];
+  cutMs: number;
+  /** Captions, timed from the start of the cut. */
+  words: Word[];
+  /** Caption lines as polished in Kdenlive, to show instead of the words a few at a time. */
+  lines?: { endMs: number; words: Word[] }[];
+};

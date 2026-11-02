@@ -1,0 +1,13 @@
+# good-version: npm run new -- good-version
+title: Outerview kahdessa minuutissa
+music: "assets/music/She No Dull Beat - Nana Kwabena.mp3"
+musicVolume: 0.1
+language: fi
+replace:
+  Audiview: Outerview
+  Audaview: Outerview
+  Audioview: Outerview
+  outer view: Outerview
+  Maija: Maya
+  Maijan: Mayan
+  Maijalle: Mayalle

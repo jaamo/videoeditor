@@ -6,13 +6,12 @@
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Language } from "@remotion/install-whisper-cpp";
 import { projectDir, projectName, type Transcript } from "./project.ts";
 import { ensureWhisper, MODEL, toWhisperWav, whisperWords } from "./whisper.ts";
 
 const args = process.argv.slice(2);
 const langAt = args.indexOf("--lang");
-const lang = (langAt >= 0 ? args.splice(langAt, 2)[1] : "fi") as Language;
+const lang = langAt >= 0 ? args.splice(langAt, 2)[1] : "fi";
 const promptAt = args.indexOf("--prompt");
 const prompt = promptAt >= 0 ? args.splice(promptAt, 2)[1] : undefined;
 const source = args.find((a) => !a.startsWith("--"));

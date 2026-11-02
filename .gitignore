@@ -7,7 +7,7 @@ cache/
 assets/music/*
 !assets/music/.gitkeep
 
-# Whisper: built locally by npm run transcribe (whisper.cpp + model)
+# Whisper, when it was run locally (whisper.cpp + model)
 whisper.cpp/
 projects/*/transcript.audio.wav
 
@@ -17,3 +17,10 @@ projects/*/clips/
 # Screen recordings: large media, like the music
 screencasts/*
 !screencasts/.gitkeep
+
+# npm run new: the footage, everything made along the way, and the videos
+projects/*/footage/
+projects/*/tmp/
+projects/*/*.mp4
+
+__pycache__/

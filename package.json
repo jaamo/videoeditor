@@ -3,13 +3,17 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "make": "node --env-file=.env --import=tsx src/cli.ts",
-    "studio": "node --env-file=.env --import=tsx src/cli.ts --studio",
+    "make": "node --env-file=.env --disable-warning=DEP0205 --import=tsx src/cli.ts",
+    "studio": "node --env-file=.env --disable-warning=DEP0205 --import=tsx src/cli.ts --studio",
     "check": "tsc",
-    "shot": "node --env-file=.env --import=tsx src/shot.ts",
-    "say": "node --env-file=.env --import=tsx src/say.ts",
-    "transcribe": "node --env-file=.env --import=tsx src/screencast/transcribe.ts",
-    "cut": "node --env-file=.env --import=tsx src/screencast/cut.ts"
+    "shot": "node --env-file=.env --disable-warning=DEP0205 --import=tsx src/shot.ts",
+    "say": "node --env-file=.env --disable-warning=DEP0205 --import=tsx src/say.ts",
+    "transcribe": "node --env-file=.env --disable-warning=DEP0205 --import=tsx src/screencast/transcribe.ts",
+    "cut": "node --env-file=.env --disable-warning=DEP0205 --import=tsx src/screencast/cut.ts",
+    "clicks": "python3 src/screencast/click-circles.py",
+    "titles": "remotion studio src/remotion/index.ts --public-dir=assets/titles",
+    "titles:render": "remotion render src/remotion/index.ts Intro out/titles/intro.mp4 --public-dir=assets/titles && remotion render src/remotion/index.ts End out/titles/end.mp4 --public-dir=assets/titles",
+    "new": "node --env-file=.env --disable-warning=DEP0205 --import=tsx src/screencast/new.ts"
   },
   "author": "",
   "license": "ISC",

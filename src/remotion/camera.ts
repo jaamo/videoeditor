@@ -7,7 +7,7 @@ export const H = 1920;
 /** Where the camera looks (viewport CSS px) and how much it magnifies (output px per CSS px). */
 export type Cam = { cx: number; cy: number; s: number };
 
-const TRANSITION_MS = 900;
+export const TRANSITION_MS = 900;
 /** Capture is 2×, so a little past that still looks sharp. */
 const MAX_SCALE = 2.5;
 const ease = Easing.bezier(0.65, 0, 0.35, 1);
@@ -22,6 +22,13 @@ export type CamLimits = {
   /** How much of the frame's height a box may fill. Half keeps it clear of the captions. */
   fitHeight?: number;
 };
+
+/**
+ * A hand-made recording is 1×: past 2× the footage goes soft (Playwright captures are 2× and
+ * allow more). Its zoom targets are often whole columns, tall and narrow, so they may fill
+ * most of the frame's height, under the captions too.
+ */
+export const SCREENCAST_CAMERA: CamLimits = { maxScale: 2, fitHeight: 0.8 };
 
 /** Frame a box: as close as it fits, within the limits, never wider than overview. */
 export function camFor(box: Box | null, vw: number, vh: number, limits: CamLimits = {}): Cam {

@@ -178,3 +178,31 @@ export type FinalManifest = {
   /** Caption lines as polished in Kdenlive, to show instead of the words a few at a time. */
   lines?: { endMs: number; words: Word[] }[];
 };
+
+/** How the video looks at a moment: the face alone in the middle, or the screen with the face small. */
+export type EditLayout = "face" | "screen";
+
+/** Props of the Edit composition: a cut of a face camera and a screen recording, made from a plan. */
+export type EditManifest = {
+  fps: number;
+  title: string;
+  /** false: no opening title card; the video starts on the cut. */
+  opening?: boolean;
+  subtitle?: string;
+  endLine?: string;
+  /** Published paths, with each video's size as shown, and where it starts in the main recording's time. */
+  face?: { src: string; width: number; height: number; startMs: number };
+  screen?: { src: string; width: number; height: number; startMs: number };
+  voice: string;
+  /** The screen recording's own sound, mastered, for segments that take theirs from it. */
+  screenSound?: string;
+  music?: string;
+  musicVolume: number;
+  /** The cut, in ms from its start: pieces of the main recording's time (`fromMs`). */
+  segments: { atMs: number; fromMs: number; durationMs: number; layout: EditLayout; sound?: "screen" }[];
+  /** Zooms on the screen, in ms of the cut; boxes in the screen recording's pixels. */
+  zooms: { atMs: number; untilMs: number; box: [number, number, number, number] }[];
+  cutMs: number;
+  /** Captions, timed from the start of the cut. */
+  words: Word[];
+};

@@ -1,0 +1,167 @@
+{
+ "about": "A first guess at what to keep, in seconds of the main recording: speech without pauses over 1 s, retakes and lone fillers. A starting point, not the plan.",
+ "keep": [
+  [
+   1.6,
+   2.2
+  ],
+  [
+   21.6,
+   42.2
+  ],
+  [
+   49.5,
+   53.4
+  ],
+  [
+   54,
+   54.6
+  ],
+  [
+   55.5,
+   80.1
+  ],
+  [
+   81.4,
+   82.3
+  ],
+  [
+   86.1,
+   92.2
+  ],
+  [
+   93.4,
+   97.6
+  ],
+  [
+   99.2,
+   114.9
+  ],
+  [
+   126.5,
+   158.5
+  ],
+  [
+   167,
+   173.7
+  ],
+  [
+   180,
+   182.8
+  ],
+  [
+   183.4,
+   185.1
+  ],
+  [
+   187.3,
+   193.4
+  ],
+  [
+   194.9,
+   196.5
+  ],
+  [
+   201.8,
+   206.9
+  ],
+  [
+   207.5,
+   223
+  ],
+  [
+   224.1,
+   225.2
+  ],
+  [
+   228.6,
+   236.3
+  ],
+  [
+   237.5,
+   237.9
+  ]
+ ],
+ "removed": [
+  {
+   "from": 0,
+   "to": 1.6,
+   "why": "silence"
+  },
+  {
+   "from": 2.2,
+   "to": 21.6,
+   "why": "silence"
+  },
+  {
+   "from": 42.2,
+   "to": 49.5,
+   "why": "silence"
+  },
+  {
+   "from": 80.1,
+   "to": 81.4,
+   "why": "silence"
+  },
+  {
+   "from": 82.3,
+   "to": 86.1,
+   "why": "silence"
+  },
+  {
+   "from": 92.2,
+   "to": 93.4,
+   "why": "silence"
+  },
+  {
+   "from": 97.6,
+   "to": 99.2,
+   "why": "silence"
+  },
+  {
+   "from": 114.9,
+   "to": 126.5,
+   "why": "silence"
+  },
+  {
+   "from": 158.5,
+   "to": 167,
+   "why": "silence"
+  },
+  {
+   "from": 173.7,
+   "to": 180,
+   "why": "silence"
+  },
+  {
+   "from": 185.1,
+   "to": 187.3,
+   "why": "silence"
+  },
+  {
+   "from": 193.4,
+   "to": 194.9,
+   "why": "silence"
+  },
+  {
+   "from": 196.5,
+   "to": 201.8,
+   "why": "silence"
+  },
+  {
+   "from": 223,
+   "to": 224.1,
+   "why": "silence"
+  },
+  {
+   "from": 225.2,
+   "to": 228.6,
+   "why": "silence"
+  },
+  {
+   "from": 236.3,
+   "to": 237.5,
+   "why": "silence"
+  }
+ ]
+}

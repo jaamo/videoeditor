@@ -1,0 +1,55 @@
+{
+ "about": "Speech Whisper left out of transcript.json the first time, transcribed again on its own and added. Seconds of the main recording. Check these: Whisper may also invent words over noise.",
+ "added": [
+  {
+   "from": 52,
+   "to": 53,
+   "text": "on se, mitä haluaisin."
+  },
+  {
+   "from": 89.2,
+   "to": 90.2,
+   "text": "tekoälypystöä monen devainan liikenteen."
+  },
+  {
+   "from": 93.6,
+   "to": 94.5,
+   "text": "Missä kun saa uhaa harjata?"
+  },
+  {
+   "from": 99.4,
+   "to": 109.4,
+   "text": "Eli mä oon antanut aiheena nyt meidän haastattelija sit lähtee kysylee. Sen perusteella muuta kysymyksiä. Ja mä voin täs vastailla. Mä nyt lähetän hänen kanssaan pidempään jutteleen."
+  },
+  {
+   "from": 134.1,
+   "to": 135.3,
+   "text": "Olisiko tämä hyvä tai olisiko tämä"
+  },
+  {
+   "from": 140.6,
+   "to": 158.1,
+   "text": "vaikka tuosta toi. Mä voin manuaalisesti toki tässä näitä korjailla, tai sitten mä voin täällä chatti-ikkunassa pyytää tähän jotain muutoksia, esimerkiksi, että tee tästä postauksesta lyhyempi."
+  },
+  {
+   "from": 172.2,
+   "to": 173.3,
+   "text": "Kiitos."
+  },
+  {
+   "from": 180.2,
+   "to": 181.5,
+   "text": "Ja sitten mä voin täältä julkaista."
+  },
+  {
+   "from": 207.7,
+   "to": 211,
+   "text": "Ne haasteet voivat olla pitkiä tai lyhyitä, niitä voisi tulla usein."
+  },
+  {
+   "from": 234.3,
+   "to": 236,
+   "text": "toisessa vaiheessa vähän myöhemmin."
+  }
+ ]
+}

@@ -24,3 +24,9 @@ projects/*/tmp/
 projects/*/*.mp4
 
 __pycache__/
+
+# The video agents (/make-video): sound, frames and checks are remade from the footage
+projects/*/analysis/*.wav
+projects/*/analysis/frames/
+projects/*/analysis/sheets/
+projects/*/review/

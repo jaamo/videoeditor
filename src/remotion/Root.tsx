@@ -1,5 +1,6 @@
 import { Composition, type CalculateMetadataFunction } from "remotion";
-import type { FinalManifest, Manifest, ScreencastManifest } from "../types";
+import type { EditManifest, FinalManifest, Manifest, ScreencastManifest } from "../types";
+import { Edit, editDurationMs } from "./Edit";
 import { H, W } from "./camera";
 import { Final, finalDurationMs } from "./Final";
 import { INTRO_MS, OUTRO_MS } from "./theme";
@@ -57,6 +58,22 @@ const finalPlaceholder: FinalManifest = {
   words: [],
 };
 
+const editPlaceholder: EditManifest = {
+  fps: 30,
+  title: "Title",
+  voice: "voice.wav",
+  musicVolume: 0.1,
+  segments: [],
+  zooms: [],
+  cutMs: 3000,
+  words: [],
+};
+
+const editMetadata: CalculateMetadataFunction<EditManifest> = ({ props }) => ({
+  fps: props.fps,
+  durationInFrames: Math.ceil((editDurationMs(props) / 1000) * props.fps),
+});
+
 const finalMetadata: CalculateMetadataFunction<FinalManifest> = ({ props }) => ({
   fps: props.fps,
   durationInFrames: Math.ceil((finalDurationMs(props) / 1000) * props.fps),
@@ -96,6 +113,17 @@ export const Root = () => (
     defaultProps={finalPlaceholder}
     calculateMetadata={finalMetadata}
   />
+  {/* A face camera and a screen recording, edited by the agents from a plan. See src/video/. */}
+  <Composition
+    id="Edit"
+    component={Edit}
+    width={TITLE_W}
+    height={TITLE_H}
+    fps={30}
+    durationInFrames={1}
+    defaultProps={editPlaceholder}
+    calculateMetadata={editMetadata}
+  />
   {/* Its title cards on their own, to work on: npm run titles. */}
   <Composition
     id="Intro"
@@ -107,6 +135,6 @@ export const Root = () => (
     defaultProps={{ title: "Outerview kahdessa minuutissa" } as IntroProps}
     calculateMetadata={({ props }: { props: IntroProps }) => ({ durationInFrames: Math.round((introDurationMs(props) / 1000) * TITLE_FPS) })}
   />
-  <Composition id="End" component={End} width={TITLE_W} height={TITLE_H} fps={TITLE_FPS} durationInFrames={Math.round((END_MS / 1000) * TITLE_FPS)} />
+  <Composition id="End" component={End} width={TITLE_W} height={TITLE_H} fps={TITLE_FPS} durationInFrames={Math.round((END_MS / 1000) * TITLE_FPS)} defaultProps={{} as { line?: string }} />
   </>
 );

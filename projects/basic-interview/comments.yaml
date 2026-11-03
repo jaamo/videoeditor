@@ -1,0 +1,33 @@
+# Comments on out.mp4 (npm run video -- comments basic-interview).
+# t: seconds of the video; recording: seconds of the main recording, as in plan.yaml.
+video: out.mp4
+comments:
+  - t: 48.6
+    at: 0:48.6
+    where: segment 8 (screen), 88.1 s of the recording
+    segment: 8
+    recording: 88.1
+    text: let the interview continue for a moment
+    done: true
+  - t: 57.6
+    at: 0:57.6
+    where: segment 9 (screen), 108.1 s of the recording
+    segment: 9
+    recording: 108.1
+    text: kanssaan = kanssa
+    done: true
+  - t: 73.7
+    at: 1:13.7
+    where: segment 12 (screen), 134.3 s of the recording
+    segment: 12
+    recording: 134.3
+    text: this cut is too thight and there is single black frame
+    done: true
+  - t: 110.4
+    at: 1:50.4
+    where: segment 17 (screen), 196 s of the recording
+    segment: 17
+    recording: 196
+    text: this is weird, Tällä tavalla toimii Outervew? i thing there's a word
+      missing
+    done: true

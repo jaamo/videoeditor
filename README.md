@@ -79,6 +79,49 @@ mic check passes and its level meter moves.
 - **A bad ending:** if a take ends with a stray sound, cut it by hand with the step's
   `voiceEnd: { fi: 3190 }` (ms into the clip, per language), or get a new take with `--revoice`.
 
+## A video edited by agents: face camera and screen recording
+
+In Claude Code, from this folder:
+
+```
+/make-video my-demo
+```
+
+Put the recordings in `projects/my-demo/footage/` (it makes the folder and says so): a
+vertical video of your face and/or a screen recording. The skill runs five agents in turn,
+each writing its part into the project folder:
+
+1. **Analyzer**: cleans the voice (ElevenLabs voice isolation, then mastered to -16 LUFS),
+   transcribes it (OpenAI Whisper), lines the two recordings up by their sound, finds clicks
+   (the rings of `npm run clicks`), page changes and activity on the screen, makes contact
+   sheets, and writes what it sees: what's said and shown when, retakes and slips, moments
+   to zoom (`analysis/`).
+2. **Titles**: the opening title (and subtitle) and the end card's line, checked as stills
+   (`titles.yaml`).
+3. **Planner**: the edit: which pieces, in which layout, with which zooms (`plan.yaml`). The
+   intro is your face in the middle (black at the sides), the demo the screen with your face
+   small in the corner, the outro your face again. It stops here for you to look.
+4. **Editor**: renders it in Remotion (`out.mp4`, or a sample).
+5. **Reviewer**: transcribes the video and compares it with the plan (clipped words, retakes
+   left in), checks the sound and frames at every cut, layout change and zoom, and writes
+   `review.md`. Fixes go back to the planner, up to three rounds.
+
+To say what to change yourself, ask for the comments page (or run `npm run video --
+comments my-demo`): it plays the video in the browser; pause, press **C** and write. Each
+comment is saved to `comments.yaml` with where it is in the video and in the recording, and
+the planner acts on them, marking the ones it handled done.
+
+Every step is a file, so you can change any of them by hand (a time in `plan.yaml`, the
+title) and ask for just the rest ("re-render", "review it again"). The agents' exact work
+is `npm run video -- <analyze|frame|titles|check|render|review> <name>`; the file formats and
+editing rules are in `.claude/skills/make-video/reference.md`.
+
+- **Keys** in `.env`: `OPENAI_API_KEY` for the transcripts, `ELEVENLABS_API_KEY` for the voice
+  (the key needs the *audio isolation* permission; without it the voice is only filtered
+  locally). Voice isolation costs 1,000 ElevenLabs credits a minute, Whisper $0.006 a minute;
+  both are done once per recording.
+- **ffmpeg**: the analysis needs a full one: the system's, or else Kdenlive's flatpak's.
+
 ## A video from your own screen recording
 
 For a recording you made yourself (OBS or similar), narrated in your own voice:

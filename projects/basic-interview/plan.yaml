@@ -1,0 +1,131 @@
+# basic-interview: the edit. Seconds of the main recording (the face camera).
+segments:
+  # Intro, to the camera
+  - from: 21.65
+    to: 26.6
+    layout: face
+    text: Moikka. Mä voisin nyt ihan nopeasti demottaa tätä meidän Outerview-tuotetta.
+    why: hello, a quick demo of Outerview (handheld close-up)
+  - from: 30.03
+    to: 34.88
+    layout: face
+    why: what the product is; skips the unclear line while the phone is put down
+
+  # Body, on the screen
+  - from: 34.88
+    to: 41.92
+    layout: screen
+    why: the start page, a new interview starts here; the turn from intro to demo
+  - from: 49.6
+    to: 51.85
+    layout: screen
+    text: Otetaan tuosta, että otetaan oma aihe.
+    why: picks his own topic, the dialog opens; skips the wait before and the false start after
+  - from: 55.6
+    to: 69.45
+    layout: screen
+    text: Haluaisin puhua tekoälyn aiheuttamasta identiteettikriisistä devaajille.
+    why: says the topic while typing it; the pauses are under 0.7 s and show the typing
+    zooms:
+      - at: 56.4
+        until: 62.2
+        box: [600, 420, 720, 405]
+        why: the topic dialog as he types
+  - from: 71.87
+    to: 74.1
+    layout: screen
+    why: off to the interview; the joke about typos taken out
+  - from: 75.6
+    to: 81.3
+    layout: screen
+    why: the mic check, up to the Ready to start click
+  - from: 85.95
+    to: 93.1
+    layout: screen
+    text: Moikka Jaakko, mennään suoraan tähän. Tekoäly pistää monen devaajan identiteetin koetukselle, ja se on sulle nyt mielessä.
+    sound: screen
+    why: the call screen opens, Maya greets him and sets up the topic (as in her bubble); ends at her sentence end, her question after it cut
+  - from: 99.28
+    to: 110.47
+    layout: screen
+    text: Eli mä oon antanut aiheen, ja nyt meidän haastattelija lähtee kyselemään sen perusteella muita kysymyksiä. Ja mä voin tästä vastailla. Mä nyt lähden hänen kanssa pidempään juttelemaan, te ette jaksa kuunnella sitä.
+    why: explains how the interviewer asks from the topic (no zoom, Maya's bubble sits under the corner face)
+  - from: 110.47
+    to: 114.3
+    layout: screen
+    text: Mennään katsomaan, mitä tapahtuu, kun tämä keskustelu on päättynyt.
+    why: on to what happens after the call
+  - from: 120.6
+    to: 122.2
+    layout: screen
+    why: the interview is saved, the new one on top of the list
+  - from: 126.0
+    to: 134.02
+    layout: screen
+    text: Keskustelun jälkeen järjestelmä kirjoittelee sinun omalla äänellä muutaman ehdotuksen sisällöistä.
+    why: the drafts written in his own voice; ends right after "sisällöistä", the musing "että olisiko tämä hyvä…" cut
+    zooms:
+      - at: 128.8
+        until: 133.9
+        box: [400, 240, 1100, 620]
+        why: the post drafts
+  - from: 135.81
+    to: 142.25
+    layout: screen
+    text: Ja sitten näitä voi lähteä tästä itse analysoimaan ja tutkimaan. Avataan vaikka tuosta toi.
+    why: opens one draft; starts on the breath before "ja sitten" so the cut isn't tight
+  - from: 142.38
+    to: 160.3
+    layout: screen
+    why: edit by hand or ask the chat; types the request, Maya starts working
+    zooms:
+      - at: 152.0
+        until: 158.0
+        box: [1300, 730, 620, 350]
+        why: the chat input while he types the request, then "Working on it"
+  - from: 165.4
+    to: 172.2
+    layout: screen
+    text: Sitten voin katsoa, että tuliko tästä nyt hyvä, niin tuli hyvä. Hyväksytään muutokset.
+    why: the shortened post with highlighted changes, approved
+    zooms:
+      - at: 168.0
+        until: 172.1
+        box: [400, 380, 760, 428]
+        why: the highlighted changes and Approve
+  - from: 188.33
+    to: 193.05
+    layout: screen
+    text: Kun postaus on valmis, mä voin täältä mennä ja julkaista sen LinkedInissä.
+    why: the publish panel; the false start and the already-published post before it cut
+    zooms:
+      - at: 188.8
+        until: 192.9
+        box: [400, 40, 720, 405]
+        why: Post now / Publish and Schedule
+  - from: 194.95
+    to: 196.35
+    layout: screen
+    text: Tälleen toimii.
+    why: that's how it works, the end of the demo; said quickly (195.1–196.0) as "Tälleen toimii", not "Tällä tavalla toimii"
+
+  # Outro, to the camera
+  - from: 207.58
+    to: 211.1
+    layout: face
+    text: Ne haastattelut voi olla pitkiä tai lyhyitä, niistä voi tulla useita sisältöjä.
+    why: the second, fluent take (the first one cut)
+  - from: 211.1
+    to: 222.75
+    layout: face
+    why: once a week is enough, the wrap-up
+  - from: 230.19
+    to: 236.05
+    layout: face
+    text: Kiitos kun kuuntelit, ja mä sitten näytän jonkun toisen featuren taas jossakin toisessa vaiheessa vähän myöhemmin.
+    why: thanks and goodbye; the repeated "Tällä tavalla toimii" during the phone pickup cut
+
+replace:
+  devaadille: devaajille
+  rinsselit: rensselit
+  chatti-ikkunassa: chat-ikkunassa

@@ -6,13 +6,13 @@ import { theme, useSerif } from "./theme";
 export const WORD_MS = 400;
 export const HOLD_MS = 3000;
 
-export type IntroProps = { title: string };
+export type IntroProps = { title: string; subtitle?: string };
 
 export const introDurationMs = ({ title }: IntroProps) => title.split(" ").length * WORD_MS + HOLD_MS;
 
 const ease = Easing.bezier(0.16, 1, 0.3, 1);
 
-export const Intro = ({ title }: IntroProps) => {
+export const Intro = ({ title, subtitle }: IntroProps) => {
   useSerif();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -27,7 +27,7 @@ export const Intro = ({ title }: IntroProps) => {
         src={staticFile("logo-light.svg")}
         style={{ position: "absolute", top: 48, left: 56, width: 210, opacity: 0.92 * logoIn }}
       />
-      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", padding: "0 160px" }}>
+      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", flexDirection: "column", padding: "0 160px" }}>
         <h1
           style={{
             margin: 0, textAlign: "center", color: theme.ink, fontFamily: theme.serif, fontWeight: 400,
@@ -53,6 +53,18 @@ export const Intro = ({ title }: IntroProps) => {
             );
           })}
         </h1>
+        {subtitle && (
+          <p
+            style={{
+              margin: "36px 0 0", textAlign: "center", color: theme.ink, fontFamily: theme.serif, fontStyle: "italic",
+              fontSize: 52, lineHeight: 1.2, textWrap: "balance",
+              // After the title's last word is in.
+              opacity: 0.85 * interpolate(frame, [words.length * wordFrames, (words.length + 1.5) * wordFrames], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease }),
+            }}
+          >
+            {subtitle}
+          </p>
+        )}
       </AbsoluteFill>
     </AbsoluteFill>
   );

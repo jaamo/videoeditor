@@ -1,0 +1,29 @@
+{
+  "main": "face",
+  "durationMs": 237939,
+  "face": {
+    "width": 1080,
+    "height": 1920,
+    "durationMs": 237939,
+    "fps": 29.932062371772016,
+    "hasAudio": true,
+    "file": "/home/jaamo/Documents/outerview-videos/feat-kdenlive/projects/basic-interview/footage/2026-11-02 16.00.44.mp4",
+    "startMs": 0,
+    "synced": "main"
+  },
+  "screen": {
+    "width": 1920,
+    "height": 1080,
+    "durationMs": 249067,
+    "fps": 30,
+    "hasAudio": true,
+    "file": "/home/jaamo/Documents/outerview-videos/feat-kdenlive/projects/basic-interview/footage/2026-11-02 15-56-44.mp4",
+    "startMs": -3810,
+    "synced": "sound",
+    "syncConfidence": 13.7
+  },
+  "inputs": {
+    "2026-11-02 16.00.44.mp4": "512238428-1793628531964",
+    "2026-11-02 15-56-44.mp4": "18530812-1793628055042"
+  }
+}

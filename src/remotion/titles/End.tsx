@@ -1,13 +1,15 @@
 import { AbsoluteFill, Easing, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { Backdrop } from "./Backdrop";
 import { Ribbon } from "./Ribbon";
+import { useSerif } from "./theme";
 
 /** The ribbon forms this many times faster than on the call screen (five seconds there). */
 const ENTRANCE = 5;
 /** In: the ribbon forms (5 s / ENTRANCE). Then it holds, then switches off like an old TV. */
 const IN_MS = 5000 / ENTRANCE;
 const HOLD_MS = 1000;
-const OUT_MS = 2000;
+// The line is out 1.4 s into it; a beat of black after, not more.
+const OUT_MS = 1600;
 export const END_MS = IN_MS + HOLD_MS + OUT_MS;
 
 const ease = Easing.bezier(0.16, 1, 0.3, 1);
@@ -15,8 +17,9 @@ const squeezeEase = Easing.bezier(0.7, 0, 0.84, 0);
 /** The ribbon's width on screen, about: where the line it collapses into starts from. */
 const RING_PX = 780;
 
-/** Maya's ribbon forming in the red room, the logo coming up inside it, then a TV switch-off. */
-export const End = () => {
+/** Maya's ribbon forming in the red room, the logo coming up inside it (with a line under it), then a TV switch-off. */
+export const End = ({ line }: { line?: string }) => {
+  useSerif();
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
   const logoIn = interpolate(frame, [fps * 0.3, fps * 0.9], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
@@ -33,7 +36,8 @@ export const End = () => {
   const lineOn = at(0.35, 0.6);
   const lineShrink = at(0.9, 1.4, Easing.in(Easing.cubic));
   const lineOff = at(1.15, 1.4);
-  const logoOut = 1 - at(1.4, 2.0);
+  // The logo (and its line) go first, in the last half second of the hold, before the ring collapses.
+  const logoOut = 1 - at(-0.5, 0, ease);
 
   return (
     <AbsoluteFill style={{ background: "#000" }}>
@@ -67,6 +71,16 @@ export const End = () => {
             transform: `scale(${0.94 + 0.06 * logoIn})`,
           }}
         />
+        {line && (
+          <div
+            style={{
+              position: "absolute", top: "50%", marginTop: 140, color: "#FFF4EE", fontFamily: "'Outerview Serif', Georgia, serif",
+              fontStyle: "italic", fontSize: 44, opacity: 0.9 * logoIn * logoOut,
+            }}
+          >
+            {line}
+          </div>
+        )}
       </AbsoluteFill>
     </AbsoluteFill>
   );

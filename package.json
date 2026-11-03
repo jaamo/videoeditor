@@ -13,7 +13,8 @@
     "clicks": "python3 src/screencast/click-circles.py",
     "titles": "remotion studio src/remotion/index.ts --public-dir=assets/titles",
     "titles:render": "remotion render src/remotion/index.ts Intro out/titles/intro.mp4 --public-dir=assets/titles && remotion render src/remotion/index.ts End out/titles/end.mp4 --public-dir=assets/titles",
-    "new": "node --env-file=.env --disable-warning=DEP0205 --import=tsx src/screencast/new.ts"
+    "new": "node --env-file=.env --disable-warning=DEP0205 --import=tsx src/screencast/new.ts",
+    "video": "node --env-file=.env --disable-warning=DEP0205 --import=tsx src/video/cli.ts"
   },
   "author": "",
   "license": "ISC",

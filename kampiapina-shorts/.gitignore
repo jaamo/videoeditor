@@ -1,0 +1,17 @@
+node_modules/
+.env
+__pycache__/
+
+# Music tracks: large, and licensed separately. Put tracks in assets/music/.
+assets/music/*
+!assets/music/.gitkeep
+
+# Projects: footage, sound, frames and renders are remade or dropped in; the decisions
+# (project.yaml, plan.yaml, the .kdenlive, captions.txt, findings, reviews) are kept.
+projects/*/footage/
+projects/*/tmp/
+projects/*/*.mp4
+projects/*/analysis/*.wav
+projects/*/analysis/frames/
+projects/*/analysis/sheets/
+projects/*/review/

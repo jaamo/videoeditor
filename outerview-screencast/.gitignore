@@ -1,0 +1,32 @@
+node_modules/
+out/
+cache/
+.env
+
+# Music tracks: large, and licensed separately. Put a track at assets/music/track.mp3.
+assets/music/*
+!assets/music/.gitkeep
+
+# Whisper, when it was run locally (whisper.cpp + model)
+whisper.cpp/
+projects/*/transcript.audio.wav
+
+# Per-clip transcriptions are a cache
+projects/*/clips/
+
+# Screen recordings: large media, like the music
+screencasts/*
+!screencasts/.gitkeep
+
+# npm run new: the footage, everything made along the way, and the videos
+projects/*/footage/
+projects/*/tmp/
+projects/*/*.mp4
+
+__pycache__/
+
+# The video agents (/make-video): sound, frames and checks are remade from the footage
+projects/*/analysis/*.wav
+projects/*/analysis/frames/
+projects/*/analysis/sheets/
+projects/*/review/

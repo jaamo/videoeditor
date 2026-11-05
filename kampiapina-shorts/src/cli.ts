@@ -1,5 +1,6 @@
 // The work the agents hand off: exact, slow, or paid for, so done by code, once.
 //   npm run short -- init <name>                folders and project.yaml
+//   npm run short -- sort <name> [file=camera|broll|screen|skip …]   files dropped in the project: what they look like, then into footage/
 //   npm run short -- analyze <name> [--force]   voice, transcript, silences, a first cut, contact sheets
 //   npm run short -- frame <name> <main|cut|out|sample|broll/…|screen/…> <seconds> [x,y,w,h]
 //   npm run short -- level <name> <from> <to>   the clean voice's loudness, to cut in the quiet
@@ -13,7 +14,7 @@
 import { createHash } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { copyFile, link, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, link, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import YAML from "yaml";
 import { cutKeyOf, readCaptions, writeCaptions } from "./captions.ts";
@@ -24,7 +25,7 @@ import { contactSheets, durationOf, ff, ffReport, fingerprint, kdenliveFrame, le
 import { makeVoice } from "./lib/voice.ts";
 import { ensureWhisper, toWhisperWav, whisperWords } from "./lib/whisper.ts";
 import {
-  applyReplacements, buildCut, checkPlan, clock, footageOf, H, IMAGE, LOUD_AT_CUT_DB, msOf, paths, projectFps, readCut, readJson, readYaml, seconds, transcriptText, W,
+  applyReplacements, buildCut, checkPlan, clock, footageOf, H, IMAGE, VIDEO, LOUD_AT_CUT_DB, msOf, paths, projectFps, readCut, readJson, readYaml, seconds, transcriptText, W,
   type Cut, type Plan, type Settings, type Summary,
 } from "./project.ts";
 import type { ShortManifest, Word } from "./types.ts";
@@ -33,7 +34,7 @@ const SPELLING = { "kampi apina": "Kampiapina", "kampiapina": "Kampiapina", "kam
 
 const [cmd, name, ...rest] = process.argv.slice(2);
 if (!cmd || !name || !/^[\p{Ll}\p{N}][\p{Ll}\p{N}-]*$/u.test(name)) {
-  console.error("Usage: npm run short -- <init|analyze|frame|level|check|kdenlive|open|captions|render|review> <name>  (name: lowercase letters, digits, dashes)");
+  console.error("Usage: npm run short -- <init|sort|analyze|frame|level|check|kdenlive|open|captions|render|review> <name>  (name: lowercase letters, digits, dashes)");
   process.exit(2);
 }
 const p = paths(name);
@@ -41,7 +42,7 @@ const log = (s: string) => console.log(s);
 const rel = (f: string) => path.relative(process.cwd(), f);
 const s1 = (ms: number) => Math.round(ms / 100) / 10;
 
-const commands: Record<string, () => Promise<void>> = { init, analyze, frame, level, check, kdenlive, open, captions, render, review };
+const commands: Record<string, () => Promise<void>> = { init, sort, analyze, frame, level, check, kdenlive, open, captions, render, review };
 if (!commands[cmd]) throw new Error(`Unknown command ${cmd}`);
 if (cmd !== "init" && !existsSync(p.dir)) throw new Error(`No project ${rel(p.dir)}: npm run short -- init ${name}`);
 await commands[cmd]();
@@ -49,6 +50,11 @@ await commands[cmd]();
 // --- init ------------------------------------------------------------------------------
 
 async function init() {
+  await ensureProject();
+  log(`${rel(p.dir)}/: drop the files in it (the camera recording, b-roll, screen recordings), and they're sorted into footage/ by what they are`);
+}
+
+async function ensureProject() {
   for (const d of [p.footage, path.join(p.footage, "broll"), path.join(p.footage, "screen")]) await mkdir(d, { recursive: true });
   if (!existsSync(p.settings)) {
     const settings: Settings = { language: "fi", grade: 1, musicVolume: 0.08, replace: SPELLING };
@@ -58,7 +64,76 @@ async function init() {
         "# music: assets/music/track.mp3   # a track under the voice, ducked while speaking\n",
     );
   }
-  log(`${rel(p.dir)}/: put the camera recording in ${rel(p.footage)}/, b-roll in footage/broll/, screen recordings in footage/screen/`);
+}
+
+// --- sort ------------------------------------------------------------------------------
+
+/**
+ * Footage dropped anywhere in the project, not yet in its place: files in the project's own
+ * folder, and in footage/ itself when there's more than one video there (the camera is one).
+ */
+async function loose() {
+  const media = new RegExp(`${VIDEO.source}|${IMAGE.source}`, "i");
+  const inDir = async (d: string) => (existsSync(d) ? (await readdir(d, { withFileTypes: true })).filter((e) => e.isFile() && media.test(e.name)).map((e) => path.join(d, e.name)) : []);
+  const top = (await inDir(p.dir)).filter((f) => f !== p.out && f !== p.sample);
+  const inFootage = await inDir(p.footage);
+  const unsure = inFootage.filter((f) => VIDEO.test(f)).length > 1 || inFootage.some((f) => IMAGE.test(f));
+  return [...top, ...(unsure || top.length ? inFootage : [])].sort();
+}
+
+async function sort() {
+  await ensureProject();
+  const files = await loose();
+  const byName = new Map(files.map((f) => [path.relative(p.dir, f), f]));
+  if (!rest.length) {
+    if (!files.length) return log("nothing to sort: the footage is in place");
+    // What each looks like, for whoever decides: its size, length, sound, and a few frames.
+    const dir = path.join(p.analysis, "sort");
+    await mkdir(dir, { recursive: true });
+    log(`${files.length} files to sort (camera: the talking head, one file; broll: other footage and stills; screen: screen recordings; skip: not footage):`);
+    for (const [key, f] of byName) {
+      if (IMAGE.test(f)) {
+        log(`\n${key}: a still image\n  look: ${rel(f)}`);
+        continue;
+      }
+      const r = probe(f);
+      let sound = "no sound";
+      if (r.hasAudio) {
+        const quiet = await ffReport(["-i", f, "-vn", "-af", "silencedetect=noise=-35dB:d=0.5", "-f", "null", "-"]);
+        const silent = [...quiet.matchAll(/silence_duration: ([\d.]+)/g)].reduce((a, m) => a + Number(m[1]), 0) * 1000;
+        sound = `sound ${Math.round(Math.max(0, 1 - silent / r.durationMs) * 100)} % of the time (speech or anything loud)`;
+      }
+      const every = Math.max(1, r.durationMs / 8000);
+      const [sheet] = await contactSheets(f, r.durationMs, path.join(dir, key.replace(/[/. ]/g, "_")), every, { cols: 4, rows: 2, tileWidth: r.height > r.width ? 240 : 400 });
+      log(`\n${key}: ${r.width}×${r.height} ${r.fps.toFixed(2)} fps, ${clock(r.durationMs)}, ${sound}\n  look: ${rel(sheet.file)} (frames at ${sheet.times.join(", ")} s)`);
+    }
+    log(`\nThen: npm run -s short -- sort ${name} "<file>=camera" "<file>=broll" …  (every file, a role each)`);
+    return;
+  }
+  const roles = rest.map((a) => {
+    const at = a.lastIndexOf("=");
+    const [key, role] = [a.slice(0, at), a.slice(at + 1)];
+    if (at < 0 || !["camera", "broll", "screen", "skip"].includes(role)) throw new Error(`${a}: give <file>=camera|broll|screen|skip`);
+    const file = byName.get(key) ?? byName.get(path.basename(key));
+    if (!file) throw new Error(`${key} isn't one of the files to sort: ${[...byName.keys()].join(", ") || "(none)"}`);
+    return { file, role };
+  });
+  const left = files.filter((f) => !roles.some((r) => r.file === f));
+  if (left.length) throw new Error(`No role for ${left.map((f) => path.relative(p.dir, f)).join(", ")}`);
+  const cameras = roles.filter((r) => r.role === "camera");
+  const inPlace = (await readdir(p.footage)).filter((f) => VIDEO.test(f)).map((f) => path.join(p.footage, f)).filter((f) => !files.includes(f));
+  if (cameras.length + inPlace.length !== 1) throw new Error(`The camera is one file: ${[...inPlace, ...cameras.map((r) => r.file)].map((f) => path.relative(p.dir, f)).join(", ") || "none given"}`);
+  if (cameras.some((r) => !VIDEO.test(r.file))) throw new Error("The camera is a video");
+  const skipped = path.join(p.dir, "unused");
+  for (const { file, role } of roles) {
+    const to = role === "camera" ? p.footage : role === "skip" ? skipped : path.join(p.footage, role);
+    await mkdir(to, { recursive: true });
+    const dest = path.join(to, path.basename(file));
+    if (dest === file) continue;
+    if (existsSync(dest)) throw new Error(`${rel(dest)} is there already`);
+    await rename(file, dest);
+    log(`${path.relative(p.dir, file)} → ${path.relative(p.dir, dest)}`);
+  }
 }
 
 // --- analyze ---------------------------------------------------------------------------
@@ -66,6 +141,8 @@ async function init() {
 async function analyze() {
   const force = rest.includes("--force");
   const settings = await loadSettings();
+  const unsorted = await loose();
+  if (unsorted.length) throw new Error(`Not sorted yet: ${unsorted.map((f) => path.relative(p.dir, f)).join(", ")}. First: npm run -s short -- sort ${name}`);
   const { main, inserts } = footageOf(p, probe);
   if (!main) throw new Error(`No camera recording in ${rel(p.footage)}/`);
   if (!main.hasAudio) throw new Error(`${path.basename(main.file)} has no sound: there's no voice to cut by`);
@@ -432,7 +509,7 @@ async function render() {
     for (const f of a.filters) {
       if (prop(f, "disable") === "1") continue;
       const id = prop(f, "kdenlive_id") ?? "";
-      const len = Number(f.attrs.out ?? 0) - Number(f.attrs.in ?? 0) + 1;
+      const len = cut.frames(f.attrs.out) - cut.frames(f.attrs.in) + 1;
       if (id === "fadein" || id === "fade_from_black") fadeInF = Math.max(fadeInF, len);
       if (id === "fadeout" || id === "fade_to_black") fadeOutF = Math.max(fadeOutF, len);
       // Kdenlive's Volume (dB), at its first keyframe.

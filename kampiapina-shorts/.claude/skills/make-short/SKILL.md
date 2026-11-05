@@ -17,16 +17,20 @@ it; an `out.mp4` → ask what to do. If the user named a step, do that.
 
 ## 1. The project
 
-No `projects/<name>/`: run `npm run -s short -- init <name>` and tell the user where things
-go: the camera recording in `footage/` (one file), b-roll in `footage/broll/`, screen
-recordings in `footage/screen/`. Wait for them to say it's done.
+No `projects/<name>/`: run `npm run -s short -- init <name>` and tell the user to drop all
+the files in `projects/<name>/` as they are: the talking head, b-roll, screen recordings.
+No sorting: the analyzer works out which is which. Wait for them to say it's done.
 
 ## 2. Analyze
 
-Run the **short-analyzer** agent. It returns the findings between
+Run the **short-analyzer** agent. It first sorts the dropped files into `footage/` by
+looking at them, and tells you how. If it couldn't tell (two talking heads, say), it asks:
+put the question to the user, then run it again with their answer. It returns the findings between
 `=== analysis/findings.md ===` and `=== end ===`: save that text, exactly, to
 `projects/<name>/analysis/findings.md`. Pass on its warnings when they matter (ElevenLabs
 refused: the voice is only filtered locally; no OPENAI_API_KEY: nothing can be transcribed).
+
+Tell the user in a line how the files were sorted, so a wrong guess is caught early.
 
 ## 3. First cut (phase 1)
 

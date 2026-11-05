@@ -10,9 +10,9 @@ outro: it starts on the first word and ends on the last.
 
 - **Camera**: the main recording, usually 4K. Its 9:16 crop is placed by `framing` (where
   the speaker is), filling the frame.
-- **Emphasis zooms** (the default, on every short): on the phrases that matter, the camera
-  pushes in slightly (×1.1–1.25) over 0.5 s, holds while the phrase is said, and eases back
-  over 0.6 s; or holds until the cut, when the phrase runs to the segment's end.
+- **Emphasis zooms**: at most two on a short, on its strongest lines. A hard cut to closer
+  (×1.15–1.3), no animation, held while the phrase is said, and a hard cut back; or held
+  until the cut, when the phrase runs to the segment's end.
 - **Inserts**: b-roll or a screen recording over the camera while the voice goes on.
   `full` (b-roll's default) fills the frame, around a `box` of it if given; `fit` (screen's
   default) shows all of it across the frame's width, over a blurred, dimmed fill of itself.
@@ -21,7 +21,9 @@ outro: it starts on the first word and ends on the last.
 - **Look**: warm, faded, a little desaturated, a soft vignette and fine grain
   (`grade` in project.yaml, 0–1).
 - **Sound**: the camera's voice, cleaned (ElevenLabs voice isolation, then mastered to
-  -16 LUFS), and music if set, ducked under speech.
+  -16 LUFS), and music if set, ducked under speech. An insert with `sound` is heard too
+  (its own audio, on the "Insert sound" track): for an example the talk is about, e.g. a
+  screen recording playing music, placed where the speaker is quiet so it has room.
 
 ## The three phases
 
@@ -41,6 +43,7 @@ All from the folder `kampiapina-shorts/`, `npm run -s short -- <command> <name> 
 | Command | Does |
 |---|---|
 | `init <name>` | makes the folders and `project.yaml` |
+| `sort <name> [<file>=camera\|broll\|screen\|skip …]` | without roles: the files dropped in the project and not yet in `footage/`, each with size, length, sound and a contact sheet (`analysis/sort/`). With a role for every one: moves them into place |
 | `analyze <name> [--force]` | clean voice, transcript, silences, a first guess at the cut, contact sheets. Skips what's done for the same footage |
 | `frame <name> <what> <seconds> [x,y,w,h]` | one frame as an image at the file's own size, with the box drawn. `what`: `main` (the camera), `broll/<file>`, `screen/<file>` (seconds of that file), `cut` (the Kdenlive project as Kdenlive draws it: framing, zooms, inserts; seconds of the cut), `out`/`sample` (seconds of the video) |
 | `level <name> <from> <to>` | the clean voice's loudness (dBFS) every 50 ms, at most 30 s: where a word really starts and ends. Speech is about -20, quiet under -45; a cut where it's over -38 is heard |
@@ -62,6 +65,7 @@ cut`, the render and the review are in **seconds of the cut** (= of the video).
 ```
 projects/<name>/
   project.yaml          language (fi), music, musicVolume, grade (0–1), replace (caption spelling fixes)
+  (anything dropped)    files dropped here are sorted into footage/ by `sort`; skip → unused/
   footage/              the camera recording: one file
     broll/              b-roll clips (and stills), any number
     screen/             screen recordings, any number
@@ -92,16 +96,16 @@ projects/<name>/
 # Seconds of the camera recording, as 83.4 or "1:23.4".
 framing:                  # where the speaker is, camera pixels: the crop's middle
   x: 1850
-  y: 900                  # optional, default the middle
+  y: 900                  # optional: a little below the eyes; lands 30 % down the frame (default: the camera's middle, in the middle)
   zoom: 1.0               # optional: 1 fills the frame's height; more is closer all the time
 segments:                 # played in this order, one after another
   - from: 12.30
     to: 16.85
     why: the hook
     framing: { x: 1700 }  # optional, this segment only (the speaker moved)
-    emphasis:             # slight zoom-ins on what matters
-      - at: 14.10         # starts pushing in here (settled 0.5 s later)
-        until: 16.85      # starts easing back here (at the segment's end: holds to the cut)
+    emphasis:             # a hard cut closer on what matters; two on the whole short at most
+      - at: 14.10         # cuts in here
+        until: 16.85      # cuts back here (at the segment's end: holds to the cut)
         zoom: 1.18        # optional, default 1.15
         why: the punchline
     inserts:
@@ -111,6 +115,7 @@ segments:                 # played in this order, one after another
         from: 4.2         # seconds into the insert's own file (default 0)
         look: full        # full | fit (default: full for broll/, fit for screen/)
         box: [800, 300, 1600, 900]  # full only: what of it to show, its own pixels
+        sound: 1          # optional: its own audio heard at this gain (1: as recorded); default silent
         why: shows the trail he's talking about
 ```
 
@@ -128,14 +133,15 @@ segments:                 # played in this order, one after another
   start is often 0.2–0.35 s late, and a word is stretched over a pause sometimes. Leave
   ~0.05 s before the sound and ~0.12 s after. `check` warns about every cut where the voice
   is loud: none should be left.
-- **Framing**: the speaker's face in the upper middle of the frame: `framing.x` the middle
-  of the face (camera pixels), `framing.y` a little below the eyes. Check it with
+- **Framing**: the speaker's face high in the frame, clear of the captions (they start
+  1210 px down): `framing.x` the middle of the face (camera pixels), `framing.y` a little
+  below the eyes, which the crop puts 30 % down the frame (as far as the camera allows: at
+  zoom 1 a 9:16 camera can't move, so zoom in a little, 1.15–1.25, to give it room). Check it with
   `frame <name> cut <seconds>` after making the project. Set it per segment if the speaker
   moves.
-- **Emphasis zooms, by default**: on the key phrases (the hook, a claim, a number, a
-  punchline), one every ~4–10 s, each held over its phrase (1–4 s), `zoom` 1.1–1.25.
-  Not on every sentence: it stops meaning anything. Not while a `full` insert hides the
-  camera. Two zooms need 0.6 s between them (the first easing back).
+- **Emphasis zooms: two at most on the whole short** (`check` refuses more), on its two
+  strongest lines (the hook, the punchline), each a hard cut in and out held over its
+  phrase (1–4 s), `zoom` 1.15–1.3. None is fine. Not while a `full` insert hides the camera.
 - **Inserts**: where the words are about something b-roll or a screen recording shows,
   while it's talked about, 1.5–5 s each. Also good over a jump cut (two camera pieces
   that join badly): an insert across the join hides it. Pick the stretch of the insert
@@ -148,8 +154,8 @@ segments:                 # played in this order, one after another
 ## The Kdenlive project
 
 Tracks, bottom to top: **Voice** (the clean voice, each piece grouped with its camera
-piece), **Camera** (each piece with its Transform: framing and emphasis keyframes, eased
-"cubic in/out"), **Backdrop** (the blurred fill behind `fit` inserts), **B-roll / screen**.
+piece), **Camera** (each piece with its Transform: framing and emphasis keyframes, held
+("discrete": a zoom is a hard cut)), **Backdrop** (the blurred fill behind `fit` inserts), **B-roll / screen**.
 A guide at each piece says why it's there.
 
 What the render takes from it, as it is when rendering: every clip of every video and

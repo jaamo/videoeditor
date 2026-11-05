@@ -11,6 +11,9 @@ assets/music/*
 projects/*/footage/
 projects/*/tmp/
 projects/*/*.mp4
+projects/*/*.{mov,mkv,webm,avi,m4v,mts,MOV,MP4}
+projects/*/unused/
+projects/*/analysis/sort/
 projects/*/analysis/*.wav
 projects/*/analysis/frames/
 projects/*/analysis/sheets/

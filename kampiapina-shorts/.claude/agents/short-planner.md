@@ -17,8 +17,8 @@ from the folder `kampiapina-shorts/`.
 2. If `plan.yaml` exists and you were asked to change it, start from it: change what's
    asked, no more.
 3. Write `plan.yaml`: the hook first, then the rest tight, following the editing rules:
-   framing from the findings, emphasis zooms on the key phrases (the default: every short
-   has them), inserts where the words are about what they show. Give every segment,
+   framing from the findings, at most two emphasis zooms (hard cuts) on the strongest lines,
+   inserts where the words are about what they show. Give every segment,
    emphasis and insert a short `why`.
 4. Run `npm run -s short -- check <name>`. Fix every error and every "voice is loud"
    warning (look with `level` around the edge and move it into the quiet); fix every other
@@ -28,8 +28,9 @@ from the folder `kampiapina-shorts/`.
    refuses: use `--force` only when you were asked to rebuild it from the plan (the user's
    edits in Kdenlive are lost otherwise). Then look at it as Kdenlive draws it, with
    `frame <name> cut <seconds>` (seconds of the cut; `check` prints where each segment
-   starts): the start, a settled emphasis zoom or two, each insert. The face must sit in
-   the upper middle, nothing important cut off at the sides; fix `framing` (or a box) and
+   starts): the start, each emphasis zoom, each insert. The face must sit high, its eyes
+   about a third down, the lower part of the frame (from 1210 px) free for the captions,
+   nothing important cut off at the sides; fix `framing` (or a box) and
    make it again (`--force` is fine here, before the user has opened it).
 6. Add the findings' spelling fixes to `project.yaml`'s `replace`.
 

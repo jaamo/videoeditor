@@ -2,7 +2,7 @@
 
 Vertical shorts (1080×1920) for Kampiapina from a 4K camera recording, with b-roll and
 screen recordings cut in. Agents make the first cut in Kdenlive, you fix it there, and the
-agents finish it: captions in white and Kampiapina red, slight zoom-ins on the phrases that
+agents finish it: captions in white and Kampiapina red, a hard cut closer on the two lines that
 matter, a warm faded retro look, music under the voice.
 
 ```bash
@@ -18,9 +18,9 @@ Then in Claude Code, from this folder:
 
 ## The three phases
 
-1. **First cut (agents).** Put the camera recording in `projects/<name>/footage/` (one
-   file), b-roll in `footage/broll/`, screen recordings in `footage/screen/`. The analyzer
-   cleans the voice, transcribes it and looks at everything; the planner picks the hook,
+1. **First cut (agents).** Drop all the files in `projects/<name>/`: the talking head,
+   b-roll, screen recordings, no sorting. The analyzer sorts them into `footage/` by
+   looking at them (and asks if it can't tell), cleans the voice, transcribes it and looks at everything; the planner picks the hook,
    cuts out pauses, retakes and fillers, frames the speaker in the 9:16 crop, puts in
    emphasis zooms and inserts (`plan.yaml`), and makes `<name>.kdenlive` from it.
 2. **You, in Kdenlive** (`npm run short -- open <name>`): fix timings and cuts, move or
@@ -31,6 +31,7 @@ Then in Claude Code, from this folder:
    | B-roll / screen | inserts over the camera |
    | Backdrop | a blurred, dimmed fill behind a screen recording shown whole |
    | Camera | the camera's pieces; each has a **Transform** effect with the framing and the emphasis zooms as keyframes |
+   | Insert sound | an insert's own audio, when the plan gives it `sound` |
    | Voice | the cleaned voice, grouped with its camera piece |
 
    Guides mark each piece and why it's there. Zooms are the Transform keyframes: move
@@ -48,8 +49,9 @@ rendered (the render says which).
 
 - **Captions**: a few big white words at a time, low in the middle; the word being said on
   a block of Kampiapina red, `#911B1B` (`src/remotion/theme.ts`, `src/remotion/Captions.tsx`).
-- **Emphasis zooms**: the default. On key phrases the camera pushes in ×1.1–1.25 over
-  0.5 s, holds while the phrase is said, and eases back. A 4K landscape camera cropped to
+- **Emphasis zooms**: two at most, on the strongest lines: a hard cut to closer
+  (×1.15–1.3), held while the phrase is said, and a hard cut back. The face sits high,
+  its eyes about a third down, so the captions below don't cover it. A 4K landscape camera cropped to
   9:16 is shown at 0.89× its pixels, so a ×1.15 zoom is still sharp; a 4K vertical one
   has room for ×2.
 - **Grade**: colours a little washed out, a warm cast, blacks lifted to warm brown,

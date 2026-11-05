@@ -22,12 +22,13 @@ import type { Word } from "./types.ts";
 /** The short: vertical, full HD. */
 export const W = 1080;
 export const H = 1920;
-const VIDEO = /\.(mp4|mkv|mov|webm|avi|m4v|mts)$/i;
+export const VIDEO = /\.(mp4|mkv|mov|webm|avi|m4v|mts)$/i;
 export const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
 
-/** An emphasis zoom: eases in over this long, and back out over that long. */
-export const ZOOM_IN_MS = 500;
-export const ZOOM_OUT_MS = 600;
+/** An emphasis is a hard cut in and out; most this many on a short. */
+export const MAX_EMPHASIS = 2;
+/** Where the face's framing.y lands, down the frame: high, clear of the captions (from 1210 px down). */
+const FACE_AT = 0.3;
 export const DEFAULT_ZOOM = 1.15;
 /** A `fit` insert (a screen recording, whole) sits with its middle this far down the frame, over a backdrop of itself. */
 const FIT_CENTER = 0.42;
@@ -100,6 +101,8 @@ export type Insert = {
   look?: "full" | "fit";
   /** full only: what of it to show, its own pixels [x, y, w, h]. */
   box?: [number, number, number, number];
+  /** Its own sound, heard under the voice at this gain (1: as recorded). Default: silent. */
+  sound?: number;
   why?: string;
 };
 export type PlanSegment = { from: Time; to: Time; why?: string; framing?: Framing; emphasis?: Emphasis[]; inserts?: Insert[] };
@@ -148,20 +151,21 @@ type Size = { width: number; height: number };
 
 /**
  * The rect (in the short's pixels) that shows `src` filling the frame, centred on (cx, cy)
- * of it and `zoom` times closer than just filling it, kept so no edge shows.
+ * of it (cy lands `atY` down the frame, 0.5 the middle) and `zoom` times closer than just
+ * filling it, kept so no edge shows.
  */
-export function coverRect(src: Size, cx: number, cy: number, zoom: number): Rect {
+export function coverRect(src: Size, cx: number, cy: number, zoom: number, atY = 0.5): Rect {
   const k = Math.max(W / src.width, H / src.height) * Math.max(1, zoom);
   const w = src.width * k;
   const h = src.height * k;
   const x = Math.min(0, Math.max(W - w, W / 2 - cx * k));
-  const y = Math.min(0, Math.max(H - h, H / 2 - cy * k));
+  const y = Math.min(0, Math.max(H - h, H * atY - cy * k));
   return [x, y, w, h, 1];
 }
 
-/** The camera's rect for a framing, zoomed `extra` times more. */
+/** The camera's rect for a framing, zoomed `extra` times more. `framing.y` (a little below the eyes) lands at FACE_AT. */
 export function cameraRect(src: Size, framing: Framing, extra = 1): Rect {
-  return coverRect(src, framing.x ?? src.width / 2, framing.y ?? src.height / 2, (framing.zoom ?? 1) * extra);
+  return coverRect(src, framing.x ?? src.width / 2, framing.y ?? src.height / 2, (framing.zoom ?? 1) * extra, framing.y === undefined ? 0.5 : FACE_AT);
 }
 
 /** An insert's rect: filling the frame (around its box), or whole across the frame's width. */
@@ -182,23 +186,22 @@ export const scaleOf = (r: Rect, src: Size) => Math.min(r[2] / src.width, r[3] /
 
 /**
  * The camera's keyframes for one segment, in frames from its start: its framing, and each
- * emphasis easing in, held, and easing back (or held to the cut, when it runs to the end).
+ * emphasis a hard cut to closer, held, and a hard cut back (or held to the cut).
  */
 export function cameraKeys(seg: PlanSegment, plan: Plan, src: Size, fps: number, lengthF: number): Key[] {
   const framing = { ...plan.framing, ...seg.framing };
   const base = cameraRect(src, framing);
   const fr = (ms: number) => Math.round((ms / 1000) * fps);
   const from = msOf(seg.from);
-  const keys: Key[] = [{ f: 0, type: "", rect: base }];
+  const keys: Key[] = [{ f: 0, type: "|", rect: base }];
   for (const z of [...(seg.emphasis ?? [])].sort((a, b) => msOf(a.at) - msOf(b.at))) {
     const zoomed = cameraRect(src, framing, z.zoom ?? DEFAULT_ZOOM);
     const a = Math.max(keys.at(-1)!.f + 1, fr(msOf(z.at) - from));
     const b = Math.min(lengthF - 1, fr(msOf(z.until) - from));
     if (a >= lengthF - 1 || b <= a) continue;
-    const settled = Math.min(b, a + fr(ZOOM_IN_MS));
-    keys.push({ f: a, type: "i", rect: base }, { f: settled, type: "", rect: zoomed });
+    keys.push({ f: a, type: "|", rect: zoomed });
     // Back out, unless the cut comes first: a cut is a reset of its own.
-    if (b + fr(ZOOM_OUT_MS) < lengthF - 1) keys.push({ f: b, type: "i", rect: zoomed }, { f: b + fr(ZOOM_OUT_MS), type: "", rect: base });
+    if (b < lengthF - 1) keys.push({ f: b, type: "|", rect: base });
   }
   return keys;
 }
@@ -220,6 +223,7 @@ export function checkPlan(plan: Plan, summary: Summary, words: Word[], level?: (
     return out;
   }
   const main = summary.main;
+  let emphases = 0;
   const checkFraming = (where: string, f: Framing | undefined) => {
     if (!f) return;
     if (f.x !== undefined && (f.x < 0 || f.x > main.width)) err(where, `framing x ${f.x} is off the camera (0–${main.width})`);
@@ -267,8 +271,9 @@ export function checkPlan(plan: Plan, summary: Summary, words: Word[], level?: (
         continue;
       }
       if (at < from || until > to + 50 || until <= at) err(zw, `must be inside its segment (${clock(from)}–${clock(to)}), and end after it starts`);
-      if (until - at < ZOOM_IN_MS + 300) warn(zw, `${until - at} ms: barely settles before going back`);
-      if (at < lastEnd + ZOOM_OUT_MS) err(zw, "starts before the one before it has eased back out");
+      if (until - at < 800) warn(zw, `${until - at} ms: a flash`);
+      if (at < lastEnd) err(zw, "starts before the one before it ends");
+      emphases++;
       lastEnd = until;
       const s1 = z.zoom ?? DEFAULT_ZOOM;
       if (s1 < 1.03 || s1 > 1.6) warn(zw, `zoom ${s1}: an emphasis is slight, about 1.1–1.25`);
@@ -297,6 +302,10 @@ export function checkPlan(plan: Plan, summary: Summary, words: Word[], level?: (
       const image = IMAGE.test(ins.file);
       if (!image && (inFrom < 0 || inFrom + (until - at) > src.durationMs + 50)) err(iw, `${ins.file} is ${clock(src.durationMs)} long: from ${clock(inFrom)} for ${clock(until - at)} runs past it`);
       if (ins.look && ins.look !== "full" && ins.look !== "fit") err(iw, `look "${ins.look}": full or fit`);
+      if (ins.sound !== undefined) {
+        if (typeof ins.sound !== "number" || ins.sound <= 0 || ins.sound > 4) err(iw, "sound is a gain, over 0 and up to 4 (1: as recorded)");
+        else if (image || !src.hasAudio) err(iw, `${ins.file} has no sound`);
+      }
       if (ins.box) {
         const b = ins.box;
         if (!Array.isArray(b) || b.length !== 4 || b.some((v) => typeof v !== "number")) err(iw, "box must be [x, y, width, height] in the insert's pixels");
@@ -312,6 +321,7 @@ export function checkPlan(plan: Plan, summary: Summary, words: Word[], level?: (
     const ins = [...(s.inserts ?? [])].sort((a, b) => msOf(a.at) - msOf(b.at));
     for (let k = 1; k < ins.length; k++) if (msOf(ins[k].at) < msOf(ins[k - 1].until)) err(where, `inserts overlap at ${clock(msOf(ins[k].at))}`);
   });
+  if (emphases > MAX_EMPHASIS) err("plan", `${emphases} emphasis zooms: ${MAX_EMPHASIS} at most on a short, on its strongest lines`);
   if (lengthMs > 60_000) warn("plan", `the cut is ${clock(lengthMs)}: Shorts are 60 s at most, or 3 min with the newer limit`);
   return out;
 }
@@ -345,9 +355,13 @@ export function buildCut(o: { plan: Plan; summary: Summary; voice: string; root:
   const fr = (ms: number) => Math.round((ms / 1000) * fps);
   const cut = Project.empty({
     width: W, height: H, fps, root: o.root,
-    tracks: [{ name: "Voice", audio: true }, { name: "Camera", audio: false }, { name: "Backdrop", audio: false }, { name: "B-roll / screen", audio: false }],
+    tracks: [
+      { name: "Voice", audio: true }, { name: "Insert sound", audio: true },
+      { name: "Camera", audio: false }, { name: "Backdrop", audio: false }, { name: "B-roll / screen", audio: false },
+    ],
   });
-  const [voiceTrack, cameraTrack, backdropTrack, insertTrack] = cut.tracks;
+  // Group rows are track numbers in this order.
+  const [voiceTrack, soundTrack, cameraTrack, backdropTrack, insertTrack] = cut.tracks;
   const camera = cut.addClip(path.basename(summary.main.file), summary.main.file, o.framesOf(summary.main.file));
   const voice = cut.addClip("Voice (cleaned)", o.voice, o.framesOf(o.voice));
   const insertClips = new Map<string, string>();
@@ -355,6 +369,7 @@ export function buildCut(o: { plan: Plan; summary: Summary; voice: string; root:
   const voiceEntries = [];
   const insertEntries = [];
   const backdropEntries = [];
+  const soundEntries = [];
   const groups: [number, number][][] = [];
   const guides: { pos: number; comment: string }[] = [];
   let at = 0;
@@ -366,7 +381,7 @@ export function buildCut(o: { plan: Plan; summary: Summary; voice: string; root:
     const length = outF - inF + 1;
     cameraEntries.push({ at, producer: camera, inF, outF, filters: [transform(inF, outF, cameraKeys(s, plan, summary.main, fps, length), o.writeRect)] });
     voiceEntries.push({ at, producer: voice, inF, outF, filters: voiceFades(inF, outF) });
-    groups.push([[1, at], [0, at]]);
+    groups.push([[2, at], [0, at]]);
     guides.push({ pos: at, comment: `${i + 1}${s.why ? `: ${s.why}` : ""}` });
     for (const ins of s.inserts ?? []) {
       const src = summary.inserts[ins.file];
@@ -380,6 +395,13 @@ export function buildCut(o: { plan: Plan; summary: Summary; voice: string; root:
       if (len <= 0) continue;
       const producer = insertClips.get(ins.file)!;
       insertEntries.push({ at: atF, producer, inF: a, outF: a + len - 1, filters: [transform(a, a + len - 1, [{ f: 0, type: "", rect: insertRect(src, ins, src.kind) }], o.writeRect)] });
+      const group: [number, number][] = [[4, atF]];
+      if (ins.sound) {
+        const db = Math.round(20 * Math.log10(ins.sound) * 10) / 10;
+        const gain = db ? [{ mlt_service: "volume", kdenlive_id: "volume", level: String(db), in: String(a), out: String(a + len - 1) } as Filter] : [];
+        soundEntries.push({ at: atF, producer, inF: a, outF: a + len - 1, filters: [...voiceFades(a, a + len - 1), ...gain] });
+        group.push([1, atF]);
+      }
       if ((ins.look ?? (src.kind === "screen" ? "fit" : "full")) === "fit") {
         const fill = coverRect(src, src.width / 2, src.height / 2, BACKDROP.zoom);
         // Transform first: after it, the blur works on the frame (MLT skips it the other way round).
@@ -388,8 +410,9 @@ export function buildCut(o: { plan: Plan; summary: Summary; voice: string; root:
           { mlt_service: "avfilter.gblur", kdenlive_id: "avfilter.gblur", "av.sigma": String(BACKDROP.sigma), "av.sigmaV": String(BACKDROP.sigma), "av.steps": "1", "av.planes": "7" } as Filter,
           { mlt_service: "brightness", kdenlive_id: "brightness", level: String(BACKDROP.brightness) } as Filter,
         ] });
-        groups.push([[2, atF], [3, atF]]);
+        group.push([3, atF]);
       }
+      if (group.length > 1) groups.push(group);
     }
     at += length;
   }
@@ -397,6 +420,7 @@ export function buildCut(o: { plan: Plan; summary: Summary; voice: string; root:
   cut.place(voiceTrack, voiceEntries);
   cut.place(insertTrack, insertEntries.sort((a, b) => a.at - b.at));
   cut.place(backdropTrack, backdropEntries.sort((a, b) => a.at - b.at));
+  cut.place(soundTrack, soundEntries.sort((a, b) => a.at - b.at));
   cut.setGroups(groups);
   cut.setGuides(guides);
   cut.setLength(cut.length);
@@ -419,6 +443,8 @@ export type Cut = {
   video: { clips: CutClip[]; keys?: Key[] }[];
   audio: CutClip[];
   warnings: string[];
+  /** Frames of a time as Kdenlive writes it: a frame number or a timecode. */
+  frames: (v?: string) => number;
 };
 
 const active = (f: XmlNode) => prop(f, "disable") !== "1";
@@ -437,6 +463,9 @@ export async function readCut(file: string): Promise<Cut> {
       if (tf) {
         // The filter's keyframes count from its own start, which Kdenlive keeps at the clip's.
         const shift = pj.frames(tf.attrs.in ?? String(c.inF)) - c.inF;
+        // Outside its range Kdenlive draws the clip without it (whole, fitted): a clip made longer keeps its old Transform.
+        if (pj.frames(tf.attrs.in ?? String(c.inF)) > c.inF || pj.frames(tf.attrs.out ?? String(c.outF)) < c.outF)
+          warnings.push(`the Transform of the clip at ${(c.at / pj.fps).toFixed(2)} s doesn't cover all of it: Kdenlive shows the rest unframed, the render framed (stretch the effect to the clip)`);
         keys = parseRect(prop(tf, "rect")!, { fps: pj.fps, length: durF, size }).map((k) => ({ ...k, f: k.f + shift }));
       }
       const first = (f: XmlNode | undefined, name: string) => (f ? parseFloat((prop(f, name) ?? "").split(";")[0].split("=").at(-1)!) : NaN);
@@ -466,7 +495,7 @@ export async function readCut(file: string): Promise<Cut> {
       if (other.length) warnings.push(`effects ${other.join(", ")} on the clip at frame ${c.atF} aren't rendered (only Transform is)`);
     }
   }
-  return { fps: pj.fps, width: pj.width, height: pj.height, lengthF: pj.length, video, audio, warnings };
+  return { fps: pj.fps, width: pj.width, height: pj.height, lengthF: pj.length, video, audio, warnings, frames: (v?: string) => pj.frames(v) };
 }
 
 // --- transcript --------------------------------------------------------------------------

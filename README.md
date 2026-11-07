@@ -7,3 +7,4 @@ its own dependencies, README and tooling — `cd` into one and work from there.
 | --- | --- |
 | [`outerview-screencast/`](outerview-screencast/) | Edit screen recordings into vertical Outerview product videos (Remotion, Kdenlive, Whisper, agent workflow). |
 | [`kampiapina-shorts/`](kampiapina-shorts/) | Kampiapina shorts from 4K camera footage: agents cut it in Kdenlive, you fix it there, agents add captions, emphasis zooms and a retro grade (`/make-short`). |
+| [`kampiapina-videos/`](kampiapina-videos/) | Kampiapina full-length talking-head videos, cut in DaVinci Resolve through its MCP: agents sort and analyze the footage, cut the talk tight, cut b-roll in, hide jump cuts with punch-ins, set colour groups, titles and music; you finish it in Resolve (`/edit-video`). |

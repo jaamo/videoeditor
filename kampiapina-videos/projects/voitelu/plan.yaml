@@ -1,0 +1,140 @@
+# voitelu: the first cut. Seconds of P1004769.MOV (the only A-roll).
+# Joins are hidden by alternating punch-ins (1 / 1.18) or by b-roll over the join.
+segments:
+  - from: 13.65
+    to: 37.50
+    why: greeting and the title thought (pre-roll chatter before it out; the "tämä on niin" hesitation stays, there's no quiet in it to cut in)
+
+  - from: 44.48
+    to: 231.10
+    zoom: 1.18
+    why: the Kaldoaivi story, the YouTubers, the 2-minute-video idea, Muc-Off and the ultrasonic cleaner (the sock aside before it out)
+
+  - from: 252.88
+    to: 294.25
+    why: Rex Black Diamond on all bikes and his process (the "Ja sitten" false start, sniffing and silence before it out); the join is under the Rex insert
+    inserts:
+      - file: P1004771.MOV
+        at: 252.88
+        until: 260.00
+        from: 0.3
+        why: the Rex Black Diamond bottle, label readable, while he says he moved to it
+      - file: P1004771.MOV
+        at: 276.50
+        until: 283.00
+        from: 7.8
+        why: cap off, the dosing tip, while he says he applies it to every link
+
+  - from: 295.22
+    to: 300.55
+    zoom: 1.18
+    why: has used it on all bikes for years (the 1 s pause before it out)
+
+  - from: 317.62
+    to: 321.95
+    why: thought he'd found the solution for life (the camera-blinking aside and him leaving the frame out)
+
+  - from: 323.88
+    to: 362.45
+    zoom: 1.18
+    why: expensive but economical, lubes well, no chain noise (the "Tässä," false start out)
+    inserts:
+      - file: P1004771.MOV
+        at: 325.60
+        until: 330.60
+        from: 19.0
+        why: the bottle with its label while he says it costs 30 euros
+
+  - from: 364.30
+    to: 580.90
+    why: rain washes it off, gunk on the sprockets, the clogging tip, and 42 Shield on the road bike (the first "Jos sataa" out, the silence while he picks up the Squirts out)
+    inserts:
+      - file: P1004771.MOV
+        at: 430.50
+        until: 435.00
+        from: 14.3
+        why: the needle-thin dosing tip while he says the tip clogs
+      - file: P1004770.MOV
+        at: 484.00
+        until: 490.30
+        from: 1.5
+        why: the 42 Shield tube turned in the fingers, label readable, as he names it
+      - file: P1004770.MOV
+        at: 498.20
+        until: 505.00
+        from: 15.5
+        why: cap off, the dropper tip, cap back, while he says a drop per link, dry overnight
+      - file: P1004770.MOV
+        at: 559.30
+        until: 565.00
+        from: 8.5
+        why: the tube in the open palm while he lists "new, magical, Finnish, ceramic"
+
+  - from: 585.05
+    to: 657.20
+    zoom: 1.18
+    why: the Squirt waxes from GravelSupply, no collaboration, cheaper than Rex, will test them (the trailing "et toimiks nää" and the stumble after it out); both joins under Squirt inserts
+    inserts:
+      - file: P1004772.MOV
+        at: 585.05
+        until: 590.50
+        from: 0.2
+        why: the three Squirt bottles in the palm as he brings them up
+      - file: P1004772.MOV
+        at: 634.30
+        until: 639.80
+        from: 24.2
+        why: the three held up, labels readable, while he says he wants to try them
+      - file: P1004772.MOV
+        at: 652.30
+        until: 657.20
+        from: 16.5
+        why: the green e-bike wax picked out while he says he'll put them to the test
+
+  - from: 667.40
+    to: 672.50
+    why: not going for hot waxing though it's recommended (the lone "Mä" and the pauses out)
+
+  - from: 673.90
+    to: 723.90
+    zoom: 1.18
+    why: can't be bothered to cook wax, drip wax works except in rain (the 1.5 s pause before it and the mumbled "kovaa ajoa" plus silence after it out)
+
+  - from: 732.60
+    to: 769.40
+    why: never read the instructions, applies just before leaving, reality of the bike cellar ("Joo" and pauses after it out)
+
+  - from: 775.85
+    to: 812.30
+    zoom: 1.18
+    why: the two-chains idea for the gravel bike
+    inserts:
+      - file: P1004772.MOV
+        at: 778.00
+        until: 782.30
+        from: 29.7
+        why: the three Squirt bottles held up while he says he got these to test
+
+  - from: 821.75
+    to: 823.55
+    why: the clean take of the joke "I'm pretty deep in this cycling thing" (the first, doubled take and the slip out)
+
+  - from: 867.20
+    to: 919.60
+    zoom: 1.18
+    why: the summary, a mixed soup, no perfect solution, comments open (five false starts of the summary before it out; "mutta" kept, "tota" and the pause after it out)
+
+  - from: 923.90
+    to: 929.70
+    why: thought he was done with this, testing goes on
+
+  - from: 930.85
+    to: 949.75
+    zoom: 1.18
+    why: the outro to "moro" (the pause before "Joo" out; getting up and the empty room after it out)
+
+# The titles, seconds of the A-roll: the main title in the pause after "…ketjujen voitelusta."
+# (the talk stops for it), the end title from "nyt mä nää laittaa vähän vahaa…", the sign-off.
+titles:
+  main: 20.94
+  end: 941.60

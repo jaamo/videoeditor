@@ -1,0 +1,14 @@
+# voitelu: settings of the video (see /edit-video)
+source: /Users/kampiapina/Dropbox/work/2026_11_07-voitelu
+resolve:
+  project: voitelu
+  timeline: voitelu
+language: fi
+music: Twinkle - The Grey Room _ Density & Time.mp3
+roles:
+  P1004769.MOV: aroll
+  P1004770.MOV: broll
+  P1004771.MOV: broll
+  P1004772.MOV: broll
+# musicDb: -18            # the music's level under the voice
+# titles: { musicBy: 1, social: 24, end: true }   # seconds of the cut; false leaves one out

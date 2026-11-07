@@ -1,0 +1,11 @@
+node_modules/
+.env
+__pycache__/
+
+# Projects: the footage stays where it was dropped (project.yaml's source); what's made
+# from it is remade. The decisions (project.yaml, plan.yaml, findings) are kept.
+projects/*/tmp/
+projects/*/analysis/sort/
+projects/*/analysis/*.wav
+projects/*/analysis/frames/
+projects/*/analysis/sheets/

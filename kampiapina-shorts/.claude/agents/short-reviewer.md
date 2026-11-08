@@ -15,7 +15,7 @@ You're given the project's name (and `--sample` if it's a sample). Work from the
 2. Judge each finding. Times are of the video, which is the cut (no intro).
    - **Heard against the captions**: a difference marked AT A CUT is most likely a clipped
      word: that's in the cut. Elsewhere, a word heard differently is a caption to fix (or
-     Whisper mishearing the review: check `captions.txt` against what's said).
+     Whisper mishearing the review: check `<name>.kdenlive.ass` against what's said).
    - **Said twice**: a retake left in the cut.
    - **Sound**: loudness far from -14…-16 LUFS, a peak over -1 dBFS, a silence over 0.8 s
      (shorts don't pause), music too loud under the voice.
@@ -28,8 +28,10 @@ You're given the project's name (and `--sample` if it's a sample). Work from the
    - First line: `Verdict: PASS` or `Verdict: FIX`.
    - Then each issue: severity (must / should / could), the time in the video, what's
      wrong, who fixes it, and the fix as exact as you can:
-     - **captions/settings** (the finisher): "captions.txt [4.20–5.10]: «kampi apina» →
-       «Kampiapina»", "project.yaml grade 1 → 0.7".
+     - **captions/settings** (the finisher): a caption's text, "caption at 4.20: «kampi
+       apina» → «Kampiapina»", "project.yaml grade 1 → 0.7".
+     - **Kdenlive** (the user): a caption's timing (on the Subtitles track), as well as
+       the cut.
      - **Kdenlive** (the user): "at 0:07.3 the camera clip starts in «Lähdetään»: trim its
        start 0.15 s later".
    PASS means nothing a viewer would mind is left: only "could" issues, or none.

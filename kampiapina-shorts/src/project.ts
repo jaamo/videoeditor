@@ -6,7 +6,8 @@
 //   analysis/           what the analyzer found: voice, transcript, contact sheets
 //   plan.yaml           the first cut, as the planner decided it
 //   <name>.kdenlive     the cut: made from the plan, then fixed by hand. From here on, the truth
-//   captions.txt        the captions of the cut, a line each, to fix their text
+//   <name>.kdenlive.ass the captions: its Subtitles track, their text and timing fixed in Kdenlive
+//   proxy/              Kdenlive's small copies of the footage, to edit with smoothly
 //   review/, review.md  the reviewer's checks of out.mp4
 //   tmp/                everything else made along the way
 //   out.mp4, sample.mp4
@@ -57,7 +58,12 @@ export function paths(name: string) {
     findings: a("findings.md"),
     plan: path.join(dir, "plan.yaml"),
     kdenlive: path.join(dir, `${name}.kdenlive`),
+    /** The captions of projects made before they were on Kdenlive's Subtitles track. */
     captions: path.join(dir, "captions.txt"),
+    /** Kdenlive's subtitles: the captions, edited in Kdenlive. */
+    subtitles: path.join(dir, `${name}.kdenlive.ass`),
+    /** Kdenlive's proxies of the footage: small copies it edits with (the render uses the originals). */
+    proxy: path.join(dir, "proxy"),
     review: path.join(dir, "review"),
     tmp: path.join(dir, "tmp"),
     out: path.join(dir, "out.mp4"),

@@ -28,11 +28,13 @@ outro: it starts on the first word and ends on the last.
 ## The three phases
 
 1. **First cut, by the agents**: analyze, plan (`plan.yaml`), and make `<name>.kdenlive`
-   from it. The plan is done with then.
-2. **Fixing the cut, by the user, in Kdenlive**: timings, cuts, inserts, zooms. No captions
-   or grade there: just the cut.
-3. **Finishing, by the agents**: captions of the cut as it is now (`captions.txt`, text
-   fixed), render, review. Everything is read from the `.kdenlive`: **after phase 1 the
+   from it, with the captions on its Subtitles track (`<name>.kdenlive.ass`, transcribed
+   from the cut, their text then fixed by the planner). The plan is done with then.
+2. **Fixing the cut, by the user, in Kdenlive**: timings, cuts, inserts, zooms, and the
+   captions' text and timing on the Subtitles track. No grade there.
+3. **Finishing, by the agents**: render (the captions drawn in the short's style from the
+   Subtitles track as the user left it). No review: the user has reviewed it in Kdenlive (the
+   reviewer only when asked). Everything is read from the `.kdenlive`: **after phase 1 the
    Kdenlive project is the truth, not plan.yaml.** Never rebuild it (`kdenlive --force`)
    once the user has edited it, unless they ask: it throws their edits away.
 
@@ -48,16 +50,17 @@ All from the folder `kampiapina-shorts/`, `npm run -s short -- <command> <name> 
 | `frame <name> <what> <seconds> [x,y,w,h]` | one frame as an image at the file's own size, with the box drawn. `what`: `main` (the camera), `broll/<file>`, `screen/<file>` (seconds of that file), `cut` (the Kdenlive project as Kdenlive draws it: framing, zooms, inserts; seconds of the cut), `out`/`sample` (seconds of the video) |
 | `level <name> <from> <to>` | the clean voice's loudness (dBFS) every 50 ms, at most 30 s: where a word really starts and ends. Speech is about -20, quiet under -45; a cut where it's over -38 is heard |
 | `check <name>` | the plan's errors and warnings, and what each segment says |
-| `kdenlive <name> [--force]` | `<name>.kdenlive` from the plan. Refuses to replace one that's there unless `--force` (which keeps the old one in `tmp/`) |
+| `kdenlive <name> [--force]` | `<name>.kdenlive` from the plan, and its captions on the Subtitles track (`<name>.kdenlive.ass`: the cut transcribed, `replace` applied). Refuses to replace one that's there unless `--force` (which keeps the old ones in `tmp/`) |
+| `proxy <name>` | proxies on in the project: a small copy (640 px wide, `proxy/`) of each big video clip, which Kdenlive edits with; it makes them itself for clips added later. `kdenlive` does this too. The render and `frame cut` use the originals |
 | `open <name>` | opens the project in Kdenlive |
-| `captions <name> [--force]` | the cut's voice transcribed, to `captions.txt`. Does nothing if it's for this cut already; for a changed cut it makes it again (the old one kept in `tmp/`) |
-| `render <name> [--sample <from> <to>]` | `out.mp4`, or `sample.mp4` of seconds of the video. Refuses if `captions.txt` is for an earlier cut |
+| `captions <name> [--force]` | the Subtitles track made again from the cut as it is now. Refuses when it's there (it may hold the user's fixes) unless `--force` (the old one kept in `tmp/`) |
+| `render <name> [--sample <from> <to>]` | `out.mp4`, or `sample.mp4` of seconds of the video. The captions are the Subtitles track's text and times, as left in Kdenlive; each word lit as it's said. Warns of a caption with nothing said under it, and if the voice was cut differently after the captions were made |
 | `review <name> [--sample]` | checks of the video: `review/report.md` and `review/sheet-*.jpg` |
 
 ## Time
 
 `analysis/`, `plan.yaml` and `frame main` are in **seconds of the camera recording**. An
-insert's `from` and `frame broll/…` are in seconds of that file. `captions.txt`, `frame
+insert's `from` and `frame broll/…` are in seconds of that file. `<name>.kdenlive.ass`, `frame
 cut`, the render and the review are in **seconds of the cut** (= of the video).
 
 ## Files
@@ -84,7 +87,8 @@ projects/<name>/
     findings.md         the analyzer's notes (it returns them, the skill saves them)
   plan.yaml             the first cut (phase 1)
   <name>.kdenlive       the cut (phases 2 and 3)
-  captions.txt          the captions (phase 3)
+  proxy/                Kdenlive's proxies of the footage (remade if deleted: `proxy <name>`)
+  <name>.kdenlive.ass   the captions: Kdenlive's Subtitles track ("Dialogue:" lines, a caption each)
   review/, review.md    the reviewer's checks and verdict
   tmp/                  everything else (manifest.json is what was rendered)
   out.mp4, sample.mp4
@@ -148,8 +152,8 @@ segments:                 # played in this order, one after another
   that shows the thing (contact sheets, `frame broll/… <s>`), and for `full` a `box` near
   9:16 around what matters. A 1080p landscape clip filling the vertical frame is soft:
   `check` says so; prefer `fit`, or 4K b-roll.
-- **Captions** come later, from the cut: the plan has nothing to do with them, except
-  spelling fixes for project.yaml's `replace` (from the findings).
+- **Captions** are made from the cut with the project: the plan has nothing to do with
+  them, except spelling fixes for project.yaml's `replace` (from the findings).
 
 ## The Kdenlive project
 
@@ -163,5 +167,7 @@ audio track (hidden or muted tracks left out), where it is and which part of its
 each clip's **Transform** (its keyframes, any easing), **Gaussian blur** and **Brightness**;
 a track's Transform; speed changes; on sound, fades and Volume. Anything else made in
 Kdenlive (other effects, titles, transitions between clips) isn't rendered: `render`
-warns about each. Images work as clips. Captions and the grade are added by the render, so
-Kdenlive shows the cut without them.
+warns about each. Images work as clips. The grade is added by the render, so Kdenlive
+shows the cut without it. The Subtitles track is only a preview in Kdenlive (plain white,
+about where they go): the render draws the captions in the short's style from its text and
+times.

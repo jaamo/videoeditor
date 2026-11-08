@@ -1,6 +1,6 @@
 // Reading the footage: what's in a file, its sound and its frames as numbers.
 import { spawn, spawnSync } from "node:child_process";
-import { statSync } from "node:fs";
+import { renameSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 /**
@@ -147,6 +147,19 @@ export async function contactSheets(file: string, durationMs: number, outPrefix:
     sheets.push({ file: out, times });
   }
   return sheets;
+}
+
+/**
+ * Kdenlive's proxy of a clip: small (640 px wide), every frame a keyframe, so the timeline
+ * scrubs and plays smoothly. Its frames keep their times (variable frame rate as recorded).
+ * Matches the proxy settings put in the project (PROXY_PARAMS).
+ */
+export const PROXY_PARAMS = "-vf scale=%width:-2 -vcodec libx264 -g 1 -bf 0 -preset veryfast -crf 25 -acodec aac -ab 128k -ac 2";
+export async function makeProxy(src: string, out: string, width = 640) {
+  const part = `${out}.part.mkv`;
+  await ff(["-y", "-v", "error", "-i", src, "-map", "0:v:0", "-map", "0:a?", "-fps_mode", "passthrough",
+    ...PROXY_PARAMS.replace("%width", String(width)).split(" "), part]);
+  renameSync(part, out);
 }
 
 /** A content key for a file: its size and when it was written. */

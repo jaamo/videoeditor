@@ -24,7 +24,9 @@ Then in Claude Code, from this folder:
    cuts out pauses, retakes and fillers, frames the speaker in the 9:16 crop, puts in
    emphasis zooms and inserts (`plan.yaml`), and makes `<name>.kdenlive` from it.
 2. **You, in Kdenlive** (`npm run short -- open <name>`): fix timings and cuts, move or
-   swap inserts, change zooms. The project has no captions or grade: just the cut.
+   swap inserts, change zooms, and fix the captions' text and timing on the Subtitles
+   track. Kdenlive shows them plainly; the render draws them in the short's style. No grade
+   there.
 
    | Track | What |
    |---|---|
@@ -36,9 +38,9 @@ Then in Claude Code, from this folder:
 
    Guides mark each piece and why it's there. Zooms are the Transform keyframes: move
    them, change them, add your own; any easing works. Save when you're done.
-3. **Finish (agents).** Say it's done: the finisher transcribes the cut as it is now into
-   `captions.txt` and fixes its text, then renders `out.mp4`; the reviewer checks it.
-   Fixes to the cut itself come back to you, with the time and what to change.
+3. **Finish (agents).** Say it's done: the finisher renders `out.mp4` with the captions as
+   you left them on the Subtitles track (`<name>.kdenlive.ass`). No review: you've already
+   reviewed the cut in Kdenlive (ask for one if you want it).
 
 Everything is read from the `.kdenlive` file when rendering: every clip of every track,
 its Transform (keyframes, easing), Gaussian blur and Brightness, speed changes, and on
@@ -73,7 +75,8 @@ formats and editing rules are in `.claude/skills/make-short/reference.md`.
 | `open` | opens it in Kdenlive |
 | `frame <what> <s>` | a frame of the camera, an insert, the Kdenlive cut (as Kdenlive draws it), or the video |
 | `level <from> <to>` | the voice's loudness, to cut in the quiet |
-| `captions [--force]` | the cut's captions, to `captions.txt` |
+| `proxy` | proxies on in the Kdenlive project, made for its footage (`kdenlive` does it too); the render uses the originals |
+| `captions [--force]` | the captions made again from the cut, on Kdenlive's Subtitles track (`<name>.kdenlive.ass`) |
 | `render [--sample <from> <to>]` | `out.mp4` (or `sample.mp4`) |
 | `review` | checks of the video: heard against captions, sound, frames |
 

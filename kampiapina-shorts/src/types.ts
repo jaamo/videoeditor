@@ -3,8 +3,8 @@ import type { Key } from "./keys";
 /** A word as said: its text and when, in ms. */
 export type Word = { text: string; startMs: number; endMs: number };
 
-/** A caption line: its words, shown until `endMs`. */
-export type Line = { endMs: number; words: Word[] };
+/** A caption line: its words, shown from `startMs` (or its first word) until `endMs`. */
+export type Line = { startMs?: number; endMs: number; words: Word[] };
 
 /**
  * Props of the Short composition: the cut as it is in Kdenlive, finished. Picture and sound

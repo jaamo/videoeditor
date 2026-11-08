@@ -1,6 +1,6 @@
 ---
 name: make-short
-description: Make a Kampiapina short (vertical, 1080×1920) from a 4K camera recording, with b-roll and screen recordings cut in - a first cut in Kdenlive by the agents, fixed by the user in Kdenlive, then finished by the agents with captions, emphasis zooms and the retro grade. Use when the user wants a short made, its first cut, its captions, a render or a review, e.g. "/make-short trail-tips" or "finish the short".
+description: Make a Kampiapina short (vertical, 1080×1920) from a 4K camera recording, with b-roll and screen recordings cut in - a first cut in Kdenlive by the agents, fixed by the user in Kdenlive, then finished by the agents with captions, emphasis zooms and the retro grade. Use when the user wants a short made, its first cut, its captions or a render, e.g. "/make-short trail-tips" or "finish the short".
 ---
 
 # Make a short
@@ -38,8 +38,9 @@ Run the **short-planner**. It writes `plan.yaml`, checks it, makes `<name>.kdenl
 looks at frames of it. Then tell the user, briefly: the hook, the segments (what's said,
 length), the emphasis zooms and inserts, what was taken out, the length; and that it's
 ready in Kdenlive. Offer to open it (`npm run -s short -- open <name>`), and say what to
-fix there: timings and cuts, inserts, zooms (the camera clips' Transform keyframes). No
-captions or grade in Kdenlive: those come at the end. **Stop: the user edits now.** Ask
+fix there: timings and cuts, inserts, zooms (the camera clips' Transform keyframes), and
+the captions' text and timing on the Subtitles track (a preview there; the render draws
+them in the short's style). No grade in Kdenlive: that comes at the end. **Stop: the user edits now.** Ask
 them to save in Kdenlive and say when it's done.
 
 A change to the plan before the user has touched the project (they say "move the hook",
@@ -48,24 +49,22 @@ in Kdenlive, never rebuild it from the plan unless they ask, knowing their edits
 
 ## 4. Finish (phase 3)
 
-When the user says the Kdenlive edit is done:
-
-1. **short-finisher**: captions of the cut (their text fixed), then the render (`out.mp4`).
-2. **short-reviewer**: reviews it. Save the review it returns (between `=== review.md ===`
-   and `=== end ===`) to `projects/<name>/review.md`.
-3. `Verdict: FIX`: what's for the captions or project.yaml goes back to the finisher
-   (render again, review again), at most two rounds. What's in the cut itself (a clipped
-   word, a retake left in, a zoom on the wrong moment) is the user's, in Kdenlive: tell
-   them exactly what and where (seconds of the video), and wait.
+When the user says the Kdenlive edit is done, run the **short-finisher**: the render
+(`out.mp4`), the captions as the user left them in Kdenlive. No review: the user has
+already reviewed the cut in Kdenlive. Pass on the render's warnings that matter (a Transform
+not covering its clip, captions made before the voice was cut differently): what's in the
+cut is the user's, in Kdenlive; tell them what and where (seconds of the video).
 
 ## 5. Done
 
-Tell the user: `projects/<name>/out.mp4`, its length, the verdict and anything left open,
-and what was paid for (ElevenLabs credits and OpenAI minutes the scripts printed).
+Tell the user: `projects/<name>/out.mp4`, its length, any warnings left open, and what was
+paid for (ElevenLabs credits and OpenAI minutes the scripts printed).
 
 ## Doing part of it
 
-"Just re-render", "fix the captions", "review it", "warmer look" (project.yaml's `grade`,
+"Just re-render", "fix the captions", "warmer look" (project.yaml's `grade`,
 then render): run only what that takes. Every step reads its inputs from the project's
-files. After the user changes the cut in Kdenlive, captions are made again for the new
-cut (the finisher does it: `render` refuses stale ones).
+files. A review (**short-reviewer**, its text saved to `projects/<name>/review.md`) only
+when the user asks for one. The captions are the user's in Kdenlive once they've edited: when the cut moves,
+they move the captions there too. `captions --force` remakes them from the cut, losing
+their fixes: only when the user asks.

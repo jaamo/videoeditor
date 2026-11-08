@@ -68,7 +68,8 @@ export class Project {
           const outF = this.frames(e.attrs.out);
           const p = this.byId.get(e.attrs.producer)!;
           const warp = prop(p, "mlt_service") === "timewarp";
-          const resource = path.resolve(root, (warp ? prop(p, "warp_resource") : prop(p, "resource")) ?? "");
+          // A clip shown by its proxy is read as its original: the render and checks use the full file.
+          const resource = path.resolve(root, originalOf(p, (warp ? prop(p, "warp_resource") : prop(p, "resource")) ?? ""));
           const service = warp ? "timewarp" : (prop(p, "mlt_service") ?? p.tag);
           clips.push({ at: pos, inF, outF, resource, speed: warp ? Number(prop(p, "warp_speed")) : 1, service, filters: e.children.filter((c) => c.tag === "filter") });
           pos += outF - inF + 1;
@@ -321,6 +322,17 @@ export class Project {
     }
   }
 
+  /** Every proxied clip back to its own file (for drawing frames as the render does). */
+  useOriginals() {
+    for (const n of producersOf(this)) {
+      const res = prop(n, "resource")!;
+      const original = originalOf(n, res);
+      if (original !== res) setProp(n, "resource", original);
+      const warp = prop(n, "warp_resource");
+      if (warp && originalOf(n, warp) !== warp) setProp(n, "warp_resource", originalOf(n, warp));
+    }
+  }
+
   /** An effect on a whole track, or on the sequence; its keyframes are in timeline frames. */
   addFilter(on: XmlNode, f: Filter) {
     on.children.push(node("filter", { id: this.newId("filter") }, f));
@@ -337,6 +349,16 @@ export class Project {
     return `${kind}${n}`;
   }
 }
+
+/** A producer's own file, where Kdenlive shows it by its proxy (resource: the proxy; kdenlive:originalurl: the file). */
+export function originalOf(n: XmlNode, resource: string): string {
+  const proxy = prop(n, "kdenlive:proxy");
+  const original = prop(n, "kdenlive:originalurl");
+  return proxy && proxy !== "-" && original && resource.endsWith(path.basename(proxy)) ? original : resource;
+}
+
+/** Producers with a file: a bin clip and each copy of it on the timeline. */
+export const producersOf = (pj: Project) => pj.mlt.children.filter((n) => (n.tag === "producer" || n.tag === "chain") && prop(n, "resource"));
 
 export function prop(n: XmlNode, name: string): string | undefined {
   return n.children.find((c) => c.tag === "property" && c.attrs.name === name)?.text;

@@ -32,8 +32,18 @@ from the folder `kampiapina-shorts/`.
    about a third down, the lower part of the frame (from 1210 px) free for the captions,
    nothing important cut off at the sides; fix `framing` (or a box) and
    make it again (`--force` is fine here, before the user has opened it).
-6. Add the findings' spelling fixes to `project.yaml`'s `replace`.
+6. Add the findings' spelling fixes to `project.yaml`'s `replace` before making the
+   project: the captions are made with it (`kdenlive` transcribes the cut and puts them on
+   the Subtitles track, `<name>.kdenlive.ass`).
+7. Read the captions in `<name>.kdenlive.ass` (a `Dialogue:` line each: start, end, text
+   after the ninth comma) and fix their text, not their times: Whisper's misspellings
+   (names, places, Kampiapina; the findings list some), a misheard word (check the
+   findings and `analysis/transcript.txt`), spoken forms as said (mä, oon), punctuation,
+   and where a line breaks (1–3 words, at a phrase's natural pause; to move a word to the
+   next line, move it in the text). Don't add words that weren't said. If you rebuild with
+   `--force` later, the captions are made again: fix them again.
 
 Your final message: the cut in a few lines (the hook, the segments, length), the emphasis
 zooms and inserts (one line each, with their time in the cut), what you took out and why,
-the warnings left and why they're fine, and the path of the `.kdenlive`.
+the warnings left and why they're fine, what you fixed in the captions (a line), and the
+path of the `.kdenlive`.

@@ -5,9 +5,10 @@
 //   npm run short -- frame <name> <main|cut|out|sample|broll/…|screen/…> <seconds> [x,y,w,h]
 //   npm run short -- level <name> <from> <to>   the clean voice's loudness, to cut in the quiet
 //   npm run short -- check <name>               the plan's problems
-//   npm run short -- kdenlive <name> [--force]  the plan as <name>.kdenlive (phase 1)
+//   npm run short -- kdenlive <name> [--force]  the plan as <name>.kdenlive, its captions on the Subtitles track (phase 1)
+//   npm run short -- proxy <name>               proxies of the footage, made and switched on in the project (kdenlive does it too)
 //   npm run short -- open <name>                opens it in Kdenlive (phase 2)
-//   npm run short -- captions <name> [--force]  the cut's captions, to captions.txt (phase 3)
+//   npm run short -- captions <name> [--force]  the captions made again from the cut as it is, to Kdenlive's Subtitles track
 //   npm run short -- render <name> [--sample <from> <to>]   out.mp4 (or sample.mp4)
 //   npm run short -- review <name> [--sample]   checks of the video: heard against captions, sound, frames
 // Times are seconds of the camera recording, except where they're of the cut or the video.
@@ -17,24 +18,25 @@ import { existsSync } from "node:fs";
 import { copyFile, link, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import YAML from "yaml";
-import { cutKeyOf, readCaptions, writeCaptions } from "./captions.ts";
+import { captionLines, readAss, readCaptionsTxt, timeCaptions, writeAss, type Caption } from "./captions.ts";
 import { writeRect } from "./keys.ts";
+import { originalOf, Project, producersOf, prop, setProp } from "./lib/kdenlive-xml.ts";
 import { roughCut } from "./lib/rough-cut.ts";
 import { run } from "./lib/run.ts";
-import { contactSheets, durationOf, ff, ffReport, fingerprint, kdenliveFrame, levels, probe, readWav, still } from "./lib/media.ts";
+import { contactSheets, durationOf, ff, ffReport, fingerprint, kdenliveFrame, levels, makeProxy, probe, PROXY_PARAMS, readWav, still } from "./lib/media.ts";
 import { makeVoice } from "./lib/voice.ts";
 import { ensureWhisper, toWhisperWav, whisperWords } from "./lib/whisper.ts";
 import {
   applyReplacements, buildCut, checkPlan, clock, footageOf, H, IMAGE, VIDEO, LOUD_AT_CUT_DB, msOf, paths, projectFps, readCut, readJson, readYaml, seconds, transcriptText, W,
   type Cut, type Plan, type Settings, type Summary,
 } from "./project.ts";
-import type { ShortManifest, Word } from "./types.ts";
+import type { Line, ShortManifest, Word } from "./types.ts";
 
 const SPELLING = { "kampi apina": "Kampiapina", "kampiapina": "Kampiapina", "kampi-apina": "Kampiapina" };
 
 const [cmd, name, ...rest] = process.argv.slice(2);
 if (!cmd || !name || !/^[\p{Ll}\p{N}][\p{Ll}\p{N}-]*$/u.test(name)) {
-  console.error("Usage: npm run short -- <init|sort|analyze|frame|level|check|kdenlive|open|captions|render|review> <name>  (name: lowercase letters, digits, dashes)");
+  console.error("Usage: npm run short -- <init|sort|analyze|frame|level|check|kdenlive|proxy|open|captions|render|review> <name>  (name: lowercase letters, digits, dashes)");
   process.exit(2);
 }
 const p = paths(name);
@@ -42,7 +44,7 @@ const log = (s: string) => console.log(s);
 const rel = (f: string) => path.relative(process.cwd(), f);
 const s1 = (ms: number) => Math.round(ms / 100) / 10;
 
-const commands: Record<string, () => Promise<void>> = { init, sort, analyze, frame, level, check, kdenlive, open, captions, render, review };
+const commands: Record<string, () => Promise<void>> = { init, sort, analyze, frame, level, check, kdenlive, proxy, open, captions, render, review };
 if (!commands[cmd]) throw new Error(`Unknown command ${cmd}`);
 if (cmd !== "init" && !existsSync(p.dir)) throw new Error(`No project ${rel(p.dir)}: npm run short -- init ${name}`);
 await commands[cmd]();
@@ -295,7 +297,16 @@ async function frame() {
     const cut = await readCut(p.kdenlive);
     const out = path.join(p.frames, `${name}.png`);
     await mkdir(p.frames, { recursive: true });
-    await kdenliveFrame(p.kdenlive, Math.round((ms / 1000) * cut.fps), out);
+    // From the original files, not Kdenlive's proxies: sharp, as the render draws it.
+    const pj = new Project(await readFile(p.kdenlive, "utf8"));
+    pj.useOriginals();
+    const full = path.join(p.dir, `.frame-${process.pid}.kdenlive`);
+    await writeFile(full, pj.toString());
+    try {
+      await kdenliveFrame(full, Math.round((ms / 1000) * cut.fps), out);
+    } finally {
+      await rm(full, { force: true });
+    }
     log(rel(out));
     return;
   }
@@ -371,6 +382,77 @@ async function kdenlive() {
   const zooms = plan.segments.reduce((n, s) => n + (s.emphasis?.length ?? 0), 0);
   const inserts = plan.segments.reduce((n, s) => n + (s.inserts?.length ?? 0), 0);
   log(`${rel(p.kdenlive)}: ${plan.segments.length} pieces, ${zooms} emphasis zooms, ${inserts} inserts, ${clock((cut.length / summary.fps) * 1000)}`);
+  if (existsSync(p.subtitles)) {
+    const backup = path.join(p.tmp, `${name}.${Date.now()}.kdenlive.ass`);
+    await copyFile(p.subtitles, backup);
+    log(`the captions before: ${rel(backup)}`);
+  }
+  await makeSubtitles();
+  await addProxies();
+}
+
+// --- proxies ---------------------------------------------------------------------------
+
+async function proxy() {
+  if (!existsSync(p.kdenlive)) throw new Error(`No ${rel(p.kdenlive)} yet: npm run short -- kdenlive ${name}`);
+  await mkdir(p.tmp, { recursive: true });
+  const backup = path.join(p.tmp, `${name}.${Date.now()}.before-proxies.kdenlive`);
+  await copyFile(p.kdenlive, backup);
+  log(`the project before: ${rel(backup)}`);
+  await addProxies();
+  log("(if the project is open in Kdenlive, reopen it without saving: saving there writes the old one over this)");
+}
+
+/**
+ * Proxies on in the project (Kdenlive makes them itself for clips added later), and one made
+ * for each big video clip in it, which Kdenlive then edits with. The render and `frame cut`
+ * use the originals.
+ */
+async function addProxies() {
+  // Clips this big (their longer side, px) get a proxy this wide, as in Kdenlive's own setting.
+  const [PROXY_MIN_SIZE, PROXY_WIDTH] = [1000, 640];
+  const pj = new Project(await readFile(p.kdenlive, "utf8"));
+  const root = pj.mlt.attrs.root ?? p.dir;
+  const bin = pj.mlt.children.find((n) => n.attrs.id === "main_bin");
+  if (!bin) throw new Error(`No bin in ${rel(p.kdenlive)}`);
+  const settings: Record<string, string | number> = {
+    enableproxy: 1, generateproxy: 1, proxyminsize: PROXY_MIN_SIZE, proxyresize: PROXY_WIDTH, proxyextension: "mkv", proxyparams: PROXY_PARAMS,
+    generateimageproxy: 0, enableexternalproxy: 0,
+  };
+  for (const [k, v] of Object.entries(settings)) setProp(bin, `kdenlive:docproperties.${k}`, v);
+  await mkdir(p.proxy, { recursive: true });
+  const made = new Map<string, string | null>();
+  let made1 = 0, used = 0;
+  for (const n of producersOf(pj)) {
+    const res = prop(n, "resource")!;
+    const original = originalOf(n, res);
+    const file = path.resolve(root, original);
+    if (!made.has(file)) {
+      let proxyFile: string | null = null;
+      if (VIDEO.test(file) && existsSync(file)) {
+        const pr = probe(file);
+        if (Math.max(pr.width, pr.height) >= PROXY_MIN_SIZE) {
+          proxyFile = path.join(p.proxy, `${path.basename(file).replace(/\.[^.]+$/, "").replace(/[^\w.-]+/g, "_")}.${fingerprint(file)}.mkv`);
+          if (!existsSync(proxyFile)) {
+            log(`proxy: ${rel(file)} (${clock(pr.durationMs)})…`);
+            await makeProxy(file, proxyFile, PROXY_WIDTH);
+            made1++;
+          }
+        }
+      }
+      made.set(file, proxyFile);
+    }
+    const proxyFile = made.get(file);
+    if (!proxyFile) continue;
+    setProp(n, "kdenlive:originalurl", original);
+    setProp(n, "kdenlive:proxy", proxyFile);
+    setProp(n, "resource", proxyFile);
+    if (prop(n, "warp_resource")) setProp(n, "warp_resource", proxyFile);
+    used++;
+  }
+  await writeFile(p.kdenlive, pj.toString());
+  const files = [...made.values()].filter(Boolean).length;
+  log(`proxies on in ${rel(p.kdenlive)}: ${files} clips (${made1} made now) in ${rel(p.proxy)}/, ${used} uses`);
 }
 
 async function open() {
@@ -383,7 +465,15 @@ async function open() {
   log(`Kdenlive: ${rel(p.kdenlive)}`);
 }
 
-// --- captions (phase 3) ----------------------------------------------------------------
+// --- captions ---------------------------------------------------------------------------
+// The captions live on Kdenlive's Subtitles track (<name>.kdenlive.ass): made with the project
+// from the cut's voice, their text and timing fixed there, then drawn by the render in the
+// short's own style. Kdenlive's subtitles are only for seeing and fixing them.
+
+/** Which cut the subtitles were made for. */
+function subtitlesCut() {
+  return path.join(p.tmp, "subtitles.cut");
+}
 
 /** The voice's pieces in the cut: what's transcribed for captions. */
 function voicePieces(cut: Cut) {
@@ -431,38 +521,84 @@ async function cutWords(cut: Cut): Promise<Word[]> {
   return words;
 }
 
-async function captions() {
-  if (!existsSync(p.kdenlive)) throw new Error(`No ${rel(p.kdenlive)}: the cut comes first`);
+/** The cut's words: transcribed from its voice; failing that, the recording's transcript, moved to where the cut plays it. */
+async function wordsOfCut(cut: Cut): Promise<Word[]> {
+  try {
+    return await cutWords(cut);
+  } catch (e) {
+    log(`captions: the cut couldn't be transcribed (${(e as Error).message.split("\n")[0]}): the recording's transcript is used instead`);
+    const all = await readJson<Word[]>(p.transcript);
+    const ms = (f: number) => (f / cut.fps) * 1000;
+    return voicePieces(cut)
+      .flatMap((a) =>
+        all
+          .filter((w) => (w.startMs + w.endMs) / 2 >= ms(a.fromF) && (w.startMs + w.endMs) / 2 < ms(a.fromF + a.durF))
+          .map((w) => ({ text: w.text, startMs: Math.round(w.startMs - ms(a.fromF) + ms(a.atF)), endMs: Math.round(w.endMs - ms(a.fromF) + ms(a.atF)) })),
+      )
+      .sort((x, y) => x.startMs - y.startMs);
+  }
+}
+
+/** Kdenlive's subtitles, made from the cut as it is now, and the project set to show them. */
+async function makeSubtitles() {
   await mkdir(p.tmp, { recursive: true });
   const cut = await readCut(p.kdenlive);
-  const key = cutKey(cut);
-  if (existsSync(p.captions)) {
-    const old = await readFile(p.captions, "utf8");
-    if (cutKeyOf(old) === key && !rest.includes("--force")) {
-      log(`${rel(p.captions)} is for this cut already (--force makes it again from the transcript)`);
-      return;
-    }
-    const backup = path.join(p.tmp, `captions.${cutKeyOf(old) ?? "old"}.txt`);
-    await copyFile(p.captions, backup);
-    log(`the captions before: ${rel(backup)}${cutKeyOf(old) === key ? "" : " (they were for an earlier cut)"}`);
+  const words = applyReplacements(await wordsOfCut(cut), (await loadSettings()).replace ?? {});
+  const lines = captionLines(words);
+  await writeFile(p.subtitles, writeAss(lines, W, H));
+  await writeFile(subtitlesCut(), cutKey(cut));
+  const pj = new Project(await readFile(p.kdenlive, "utf8"));
+  const shown = pj.seq.children.find((n) => n.tag === "filter" && prop(n, "mlt_service") === "avfilter.subtitles");
+  if (!shown || prop(shown, "av.filename") !== p.subtitles) {
+    if (shown) pj.seq.children.splice(pj.seq.children.indexOf(shown), 1);
+    setProp(pj.seq, "kdenlive:sequenceproperties.subtitlesList", JSON.stringify([{ file: p.subtitles, id: 0, name: "Subtitles" }]));
+    setProp(pj.seq, "kdenlive:sequenceproperties.activeSubtitleIndex", 0);
+    pj.addFilter(pj.seq, { mlt_service: "avfilter.subtitles", "av.filename": p.subtitles, "av.alpha": "1", internal_added: "237", "kdenlive:locked": "0" });
+    await writeFile(p.kdenlive, pj.toString());
   }
-  const words = applyReplacements(await cutWords(cut), (await loadSettings()).replace ?? {});
-  await writeFile(p.captions, writeCaptions(words, key));
-  log(`${rel(p.captions)}: ${words.length} words`);
+  log(`${rel(p.subtitles)}: ${lines.length} captions (${words.length} words), on Kdenlive's Subtitles track: fix their text and timing there`);
+}
+
+async function captions() {
+  if (!existsSync(p.kdenlive)) throw new Error(`No ${rel(p.kdenlive)}: the cut comes first`);
+  if (existsSync(p.subtitles)) {
+    if (!rest.includes("--force")) throw new Error(`${rel(p.subtitles)} is there, maybe with captions fixed in Kdenlive: --force makes them again from the cut as it is now (keeping a copy in tmp/)`);
+    await mkdir(p.tmp, { recursive: true });
+    const backup = path.join(p.tmp, `${name}.${Date.now()}.kdenlive.ass`);
+    await copyFile(p.subtitles, backup);
+    log(`the captions before: ${rel(backup)}`);
+  }
+  await makeSubtitles();
+  log("(if the project is open in Kdenlive, reopen it without saving: saving there writes its old captions over these)");
+}
+
+/** The captions as fixed in Kdenlive, their words timed as said, for the render. */
+async function captionsOfCut(cut: Cut): Promise<Line[]> {
+  let caps: Caption[];
+  if (existsSync(p.subtitles)) {
+    caps = readAss(await readFile(p.subtitles, "utf8"));
+    const made = existsSync(subtitlesCut()) ? (await readFile(subtitlesCut(), "utf8")).trim() : undefined;
+    if (made && made !== cutKey(cut)) log(`warning: the voice was cut differently after the captions were made: they're rendered as they are on Kdenlive's Subtitles track (captions --force makes them again, losing their fixes)`);
+  } else if (existsSync(p.captions)) {
+    caps = readCaptionsTxt(await readFile(p.captions, "utf8"));
+    log(`captions from ${rel(p.captions)} (made before the captions were in Kdenlive)`);
+  } else throw new Error(`No captions: npm run short -- captions ${name} (they go on Kdenlive's Subtitles track)`);
+  if (!caps.length) log("warning: no captions on the Subtitles track: the short is rendered without them");
+  const words = await wordsOfCut(cut);
+  for (const c of caps)
+    if (!words.some((w) => w.endMs > c.startMs && w.startMs < c.endMs)) log(`warning: nothing is said under the caption at ${s1(c.startMs)} s: «${c.text}»`);
+  return timeCaptions(caps, words);
 }
 
 // --- render ----------------------------------------------------------------------------
 
 async function render() {
   if (!existsSync(p.kdenlive)) throw new Error(`No ${rel(p.kdenlive)}: the cut comes first`);
-  if (!existsSync(p.captions)) throw new Error(`No ${rel(p.captions)}: npm run short -- captions ${name}`);
   const cut = await readCut(p.kdenlive);
   for (const w of cut.warnings) log(`warning: ${w}`);
   if (cut.width !== W || cut.height !== H) log(`warning: the Kdenlive project is ${cut.width}×${cut.height}; the short is drawn ${W}×${H}`);
-  const txt = await readFile(p.captions, "utf8");
-  if (cutKeyOf(txt) !== cutKey(cut)) throw new Error(`${rel(p.captions)} is for an earlier cut (the voice was cut differently since): npm run short -- captions ${name} (the old one is kept in tmp/)`);
   const settings = await loadSettings();
-  const lines = readCaptions(txt, await cutWords(cut));
+  const lines = await captionsOfCut(cut);
 
   // Everything Remotion shows, in its public folder: hard links (a symlink doesn't survive its bundling).
   const pub = path.join(p.tmp, "public");
@@ -502,7 +638,6 @@ async function render() {
   }
 
   const audio: ShortManifest["audio"] = [];
-  const { prop } = await import("./lib/kdenlive-xml.ts");
   for (const a of cut.audio) {
     if (!a.resource || !existsSync(a.resource) || a.speed !== 1) continue;
     let fadeInF = 1, fadeOutF = 1, gain = 1;

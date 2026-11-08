@@ -10,11 +10,12 @@ export const Captions = ({ lines, top = 1210, fontSize = 82 }: { lines: Line[]; 
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const ms = (frame / fps) * 1000;
-  const li = lines.findLastIndex((l) => l.words[0] && l.words[0].startMs <= ms);
+  const startOf = (l: Line) => l.startMs ?? l.words[0]?.startMs ?? Infinity;
+  const li = lines.findLastIndex((l) => l.words[0] && startOf(l) <= ms);
   if (li < 0) return null;
   const { words, endMs } = lines[li];
   if (ms > endMs) return null;
-  const pop = spring({ frame: frame - Math.round((words[0].startMs / 1000) * fps), fps, config: { damping: 15, stiffness: 260 } });
+  const pop = spring({ frame: frame - Math.round((startOf(lines[li]) / 1000) * fps), fps, config: { damping: 15, stiffness: 260 } });
   const current = words.findLastIndex((w) => w.startMs <= ms);
 
   return (

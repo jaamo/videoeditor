@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "short": "node --env-file-if-exists=.env --disable-warning=DEP0205 --import=tsx src/cli.ts",
+    "release": "node --env-file-if-exists=.env --disable-warning=DEP0205 --import=tsx src/release.ts",
     "studio": "remotion studio src/remotion/index.ts",
     "check": "tsc"
   },

@@ -61,6 +61,84 @@ rendered (the render says which).
   `grade` in `project.yaml` sets how much: 0 off, 1 full (still slight).
 - **Music**: `music: assets/music/<track>.mp3` in `project.yaml`, ducked under speech.
 
+## Releasing
+
+`npm run release -- <name>` publishes the short to **YouTube Shorts** and **Instagram Reels**
+and sends it to your **TikTok** inbox as a draft: you finish it in the app (a sound, the
+caption, which is printed for you to paste) and post it there.
+
+- The first run makes `release.yaml` in the project: the title, the caption, hashtags,
+  YouTube's privacy and category or a time to publish. Fill it in, then run again.
+- `--dry` shows what would be sent; `youtube`, `instagram`, `tiktok` after the name picks
+  platforms. What's been released is in `released.json`, and a platform isn't posted to
+  twice (`--again` does).
+- Once per platform: `npm run release -- login youtube|instagram|tiktok`. Keys are in
+  `.env` (see `.env.example`), tokens in `~/.config/kampiapina-shorts/tokens.json`.
+- Instagram takes either token the Meta dashboard gives. A Facebook Login one (`EAA…`, e.g. a
+  system user's from Business Settings) is for an account linked to a Facebook Page: the
+  file is uploaded straight. An Instagram Login one (`IGAA…`) has Instagram fetch the video
+  from a public address: the script serves it from this machine for a minute through a
+  Cloudflare quick tunnel, so that way needs `cloudflared` installed.
+- Approvals: a YouTube API project that hasn't been audited uploads as private (the script
+  says so; make it public in Studio). TikTok's drafts need no audit. Instagram needs a
+  Creator or Business account.
+
+### Instagram's token
+
+How the one in use was made: a system user's token, which never runs out (Meta's menus move;
+these were the names in November 2026).
+
+1. **The app.** developers.facebook.com → My Apps → Create app, the use case "Manage
+   messaging & content on Instagram". Its dashboard offered only "API setup with Facebook
+   login" and "Unified login", no Instagram login: so the token is a Facebook Login one
+   (`EAA…`), and the Instagram account has to be reached through a Facebook Page.
+2. **Instagram linked to the Page.** In the Instagram app: Edit profile → Page → Connect
+   existing Page (or from the Page's Settings → Linked accounts, or Business Suite →
+   Settings → Instagram accounts). Business Settings → Accounts → Instagram accounts then
+   shows the Page among the account's connected assets.
+3. **The app in the business portfolio.** business.facebook.com/settings → Accounts → Apps →
+   Add → Connect an app ID (the App ID from the app's dashboard).
+4. **A system user with the assets.** Users → System users → the system user → Assign
+   assets: the **app** (full control: without it, "Generate new token" says "No permissions
+   available"), the **Page** (full control) and the **Instagram account** (full control).
+5. **The token.** On the system user: Generate new token → the app → expiration **Never** →
+   all the permissions offered (at least `instagram_basic`, `instagram_content_publish`,
+   `pages_show_list`, `pages_read_engagement`; without `instagram_basic` the Page doesn't
+   show its Instagram account) → copy it (it's shown once).
+6. **Into the script.** `INSTAGRAM_ACCESS_TOKEN=<token>` in `.env`, then
+   `npm run release -- login instagram`: it finds the Page, its Instagram account
+   (@kampiapina), and keeps the token in `~/.config/kampiapina-shorts/tokens.json`. No
+   `META_APP_ID`/`META_APP_SECRET` or `cloudflared` needed this way.
+
+A new token (lost, or revoked) is steps 5–6 again.
+
+### TikTok's app
+
+The video goes to the TikTok inbox as a draft, so the app runs in a **sandbox**: no review
+by TikTok, for up to 10 of your own accounts (a sandbox can't post public videos straight
+from the API, which isn't done here).
+
+1. **The app.** developers.tiktok.com → Manage apps → Connect an app: name, icon, category,
+   description.
+2. **The sandbox.** The toggle next to the app's name → Sandbox → Create Sandbox. All the
+   rest is done in it: it has its own settings and keys (its Client key starts `sb`).
+3. **Its settings.** Platforms: **Desktop**. Products: **Login Kit** and **Content Posting
+   API** (Direct Post off; no domain to verify, the file itself is uploaded). Login Kit →
+   Desktop → Redirect URI: `http://localhost:8765/callback/`, exactly (another one: put it
+   in `.env` as `TIKTOK_REDIRECT_URI`). Scopes: `user.info.basic` (with Login Kit) and
+   `video.upload` (with the Content Posting API: it's there only once that's added).
+4. **Apply changes.** Nothing above counts until then: TikTok's sign-in checks the saved
+   settings, and says "redirect_uri" or "scope" when what the script asks for isn't in them.
+5. **The account.** Sandbox settings → Target users → Add account: the Kampiapina TikTok
+   account (it can take up to an hour to be active).
+6. **Into the script.** The sandbox's Client key and Client secret in `.env`
+   (`TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`), then `npm run release -- login tiktok` in a
+   terminal: it opens the sign-in in the browser and waits for it to come back. The sign-in
+   lasts up to 180 days; when it runs out, the script says so: log in again.
+
+Then `npm run release -- <name> tiktok` uploads it and prints the caption; in TikTok, the
+inbox notification opens the draft: paste the caption, add a sound if you like, post.
+
 ## By hand
 
 The agents' work is these commands (`npm run short -- <command> <name>`); the file

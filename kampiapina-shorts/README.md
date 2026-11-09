@@ -79,9 +79,9 @@ caption, which is printed for you to paste) and post it there.
   file is uploaded straight. An Instagram Login one (`IGAA…`) has Instagram fetch the video
   from a public address: the script serves it from this machine for a minute through a
   Cloudflare quick tunnel, so that way needs `cloudflared` installed.
-- Approvals: a YouTube API project that hasn't been audited uploads as private (the script
-  says so; make it public in Studio). TikTok's drafts need no audit. Instagram needs a
-  Creator or Business account.
+- Approvals: YouTube may keep an unaudited API project's uploads private (ours came out
+  public; if one doesn't, the script says so: make it public in Studio). TikTok's drafts
+  need no audit. Instagram needs a Creator or Business account.
 
 ### Instagram's token
 
@@ -138,6 +138,22 @@ from the API, which isn't done here).
 
 Then `npm run release -- <name> tiktok` uploads it and prints the caption; in TikTok, the
 inbox notification opens the draft: paste the caption, add a sound if you like, post.
+
+### YouTube's client
+
+1. **The project.** console.cloud.google.com → the project picker → New project. In it,
+   APIs & Services → Library → **YouTube Data API v3** → Enable (in the project the client
+   below is in: otherwise the sign-in ends with "YouTube Data API v3 has not been used in
+   project …").
+2. **The consent screen.** Google Auth Platform → Get started: a name, your email, audience
+   External. Audience → **Publish app** (In production: in Testing the sign-in runs out after
+   7 days). Signing in then shows "Google hasn't verified this app": Advanced → Go to ….
+3. **The client.** Clients → Create client → **Desktop app**. Its Client ID and secret in
+   `.env` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`).
+4. **Into the script.** `npm run release -- login youtube` in a terminal: sign in in the
+   browser, choosing the Kampiapina channel if asked.
+
+Each upload costs 1,600 of the project's 10,000 daily API units: about six a day.
 
 ## By hand
 

@@ -9,9 +9,13 @@ const IDENTITY = [0, 0.25, 0.5, 0.75, 1];
  * blacks lifted to a warm brown and the whites held back, a soft vignette and a fine grain.
  * `strength` 0 leaves the picture as it is; 1 is the full look (still a slight one).
  */
-export const Grade = ({ strength: k, children }: { strength: number; children: React.ReactNode }) => {
+export const Grade = ({ strength: k, flat: f = 0, children }: { strength: number; flat?: number; children: React.ReactNode }) => {
   const frame = useCurrentFrame();
-  if (k <= 0) return <AbsoluteFill>{children}</AbsoluteFill>;
+  if (k <= 0 && f <= 0) return <AbsoluteFill>{children}</AbsoluteFill>;
+  // Flat, like unprocessed log footage: less colour, the blacks lifted to grey, the whites held
+  // down, so the contrast drops. `flat` 0 none, 1 very flat.
+  const lift = 0.16 * f;
+  const top = 1 - 0.08 * f;
   // Tone curves per channel: lifted, warm shadows (red up, blue down), slightly rolled-off highlights.
   const r = table(IDENTITY, [0.075, 0.29, 0.54, 0.79, 0.97], k);
   const g = table(IDENTITY, [0.055, 0.265, 0.505, 0.75, 0.95], k);
@@ -27,12 +31,17 @@ export const Grade = ({ strength: k, children }: { strength: number; children: R
     <AbsoluteFill>
       <svg width="0" height="0" style={{ position: "absolute" }}>
         <filter id="kp-grade" colorInterpolationFilters="sRGB" x="0" y="0" width="100%" height="100%">
-          <feColorMatrix type="saturate" values={String(mix(1, 0.72, k))} />
+          <feColorMatrix type="saturate" values={String(mix(1, 0.72, k) * mix(1, 0.55, f))} />
           <feColorMatrix type="matrix" values={warm} />
           <feComponentTransfer>
             <feFuncR type="table" tableValues={r} />
             <feFuncG type="table" tableValues={g} />
             <feFuncB type="table" tableValues={b} />
+          </feComponentTransfer>
+          <feComponentTransfer>
+            <feFuncR type="linear" slope={top - lift} intercept={lift} />
+            <feFuncG type="linear" slope={top - lift} intercept={lift} />
+            <feFuncB type="linear" slope={top - lift} intercept={lift} />
           </feComponentTransfer>
         </filter>
         <filter id="kp-grain" x="0" y="0" width="100%" height="100%">

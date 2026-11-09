@@ -659,7 +659,7 @@ async function render() {
 
   const manifest: ShortManifest = {
     fps: cut.fps, width: W, height: H, durationFrames: cut.lengthF, sources, tracks, audio, lines, music,
-    musicVolume: settings.musicVolume ?? 0.08, grade: settings.grade ?? 1,
+    musicVolume: settings.musicVolume ?? 0.08, grade: settings.grade ?? 1, flat: settings.flat ?? 0,
   };
   const props = path.join(p.tmp, "manifest.json");
   await writeFile(props, JSON.stringify(manifest));

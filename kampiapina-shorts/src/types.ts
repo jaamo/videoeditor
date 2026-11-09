@@ -30,4 +30,6 @@ export type ShortManifest = {
   musicVolume: number;
   /** The look: 0 none, 1 the full warm, faded retro grade. */
   grade: number;
+  /** Flat, log-like: lifted blacks, less contrast and colour. 0 none, 1 very flat. */
+  flat?: number;
 };

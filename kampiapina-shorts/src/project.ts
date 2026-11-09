@@ -78,6 +78,8 @@ export type Settings = {
   musicVolume?: number;
   /** The warm, faded retro look: 0 off, 1 full. Default 1. */
   grade?: number;
+  /** Flat, log-like footage: lifted blacks, less contrast and colour. 0 off (default), 1 very flat. */
+  flat?: number;
   replace?: Record<string, string>;
 };
 

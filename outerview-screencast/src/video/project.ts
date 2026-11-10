@@ -202,7 +202,7 @@ export function checkPlan(plan: Plan, summary: Summary, words: Word[], level?: (
 
 /**
  * How much of a zoom's box the face's corner covers, once zoomed, as Edit.tsx frames it
- * (1920×1080; the face 400 px tall, 40 px in from the bottom right).
+ * (1920×1080; the face 400 px tall, 40 px in from the bottom left).
  */
 function underFace(b: Box, screen: { width: number; height: number }, face: { width: number; height: number }): number {
   const W = 1920, H = 1080;
@@ -215,8 +215,8 @@ function underFace(b: Box, screen: { width: number; height: number }, face: { wi
   const x0 = W / 2 + (b[0] - cx) * k, y0 = H / 2 + (b[1] - cy) * k;
   const x1 = x0 + b[2] * k, y1 = y0 + b[3] * k;
   const pw = (400 * face.width) / face.height;
-  const px = W - 40 - pw, py = H - 40 - 400;
-  const ix = Math.max(0, Math.min(x1, W - 40) - Math.max(x0, px));
+  const px = 40, py = H - 40 - 400;
+  const ix = Math.max(0, Math.min(x1, px + pw) - Math.max(x0, px));
   const iy = Math.max(0, Math.min(y1, H - 40) - Math.max(y0, py));
   return (ix * iy) / ((x1 - x0) * (y1 - y0));
 }

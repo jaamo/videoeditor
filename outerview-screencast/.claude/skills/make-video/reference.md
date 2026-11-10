@@ -13,7 +13,7 @@ writes files there, so any of them can be read, fixed by hand, or done again on 
 2. **The cut** (`plan.yaml`), in two layouts:
    - `face`: the face camera alone, full height in the middle, black at the sides. For the
      intro (hello, what this is) and the outro (the wrap-up, goodbye).
-   - `screen`: the screen recording filling the frame, the face small in the bottom right
+   - `screen`: the screen recording filling the frame, the face small in the bottom left
      corner (400 px tall, 40 px in). Everything in between. Zooms happen here.
    Changing layout animates over 0.7 s from the cut: the face moves between the middle
    and its corner, the screen fades. Captions run under it all (a few words at a time,
@@ -142,7 +142,7 @@ musicVolume: 0.1          # optional, music level under speech
 Made from the plan before rendering, for the user to watch and fix by hand: quicker than a
 render. Tracks, bottom to top: **Sound** (the clean voice, or the screen's own sound for
 `sound: screen`, each piece faded in and out over two frames), **Screen** (the screen
-recording whole, no zooms), **Face** (small in the bottom right corner, the whole way,
+recording whole, no zooms), **Face** (small in the bottom left corner, the whole way,
 whatever the layout). A piece's three clips are grouped. Guides: each segment (`3 screen:
 why`) and each zoom.
 
@@ -189,8 +189,8 @@ The render reads it back:
   The zoom is `min(0.8 × 1920 / w, 0.75 × 1080 / h)` (for a 1920×1080 screen), capped at
   2.2× (more looks soft): a box smaller than about 700×370 gets 2.2× and shows more around
   it. Keep boxes near 16:9. Check one with `frame <name> screen <seconds> x,y,w,h`.
-- **The face's corner** covers the bottom right of the frame (about 225×400 px, 40 px in)
-  on `screen`. A zoom on something in the screen's own bottom-right corner keeps it there,
+- **The face's corner** covers the bottom left of the frame (about 225×400 px, 40 px in)
+  on `screen`. A zoom on something in the screen's own bottom-left corner keeps it there,
   under the face: `check` warns when the face covers a zoomed box. Zoom on something else,
   or not at all.
 - **Layout changes** are moments: put them where the talk turns (from the intro to the

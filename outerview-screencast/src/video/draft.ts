@@ -11,7 +11,7 @@ import { FPS, homeSegments, seconds, type Plan, type Summary } from "./project.t
 
 const W = 1920;
 const H = 1080;
-/** The face in the draft: this tall, this far in from the bottom right (as the render's corner). */
+/** The face in the draft: this tall, this far in from the bottom left (as the render's corner). */
 const PIP_H = 400;
 const PIP_MARGIN = 40;
 
@@ -105,10 +105,10 @@ function fades(inF: number, outF: number): Filter[] {
   return [fade("fadein", inF, inF + 2), fade("fadeout", outF - 2, outF)];
 }
 
-/** Kdenlive's Transform: the face fitted in the bottom right corner, where the render puts it. */
+/** Kdenlive's Transform: the face fitted in the bottom left corner, where the render puts it. */
 function corner(inF: number, outF: number, face: { width: number; height: number }): Filter {
   const w = Math.round((PIP_H * face.width) / face.height);
-  const rect = `0=${W - PIP_MARGIN - w} ${H - PIP_MARGIN - PIP_H} ${w} ${PIP_H} 1.000000`;
+  const rect = `0=${PIP_MARGIN} ${H - PIP_MARGIN - PIP_H} ${w} ${PIP_H} 1.000000`;
   return {
     mlt_service: "qtblend", kdenlive_id: "qtblend", in: String(inF), out: String(outF),
     rect, rotation: "0=0", compositing: "0", distort: "0", rotate_center: "1", "kdenlive:collapsed": "0",

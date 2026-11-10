@@ -152,12 +152,12 @@ function screenAt(m: EditManifest, t: number): number {
   return lerp(value(m.segments[k - 1].layout), value(cur.layout), p);
 }
 
-/** The face in the middle, full height, or small in the bottom right corner; `p` between. */
+/** The face in the middle, full height, or small in the bottom left corner (the speaker looks right, into the picture); `p` between. */
 function faceRect(m: EditManifest, p: number): Rect {
   const aspect = m.face!.width / m.face!.height;
   const full = { x: (W - H * aspect) / 2, y: 0, w: H * aspect, h: H, r: 0 };
   if (!m.screen) return full;
-  const pip = { x: W - PIP_MARGIN - PIP_H * aspect, y: H - PIP_MARGIN - PIP_H, w: PIP_H * aspect, h: PIP_H, r: 24 };
+  const pip = { x: PIP_MARGIN, y: H - PIP_MARGIN - PIP_H, w: PIP_H * aspect, h: PIP_H, r: 24 };
   return { x: lerp(full.x, pip.x, p), y: lerp(full.y, pip.y, p), w: lerp(full.w, pip.w, p), h: lerp(full.h, pip.h, p), r: lerp(full.r, pip.r, p) };
 }
 

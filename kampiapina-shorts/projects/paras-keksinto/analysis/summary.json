@@ -1,0 +1,15 @@
+{
+  "fps": 30,
+  "main": {
+    "width": 2160,
+    "height": 3840,
+    "durationMs": 74967,
+    "fps": 30,
+    "hasAudio": true,
+    "file": "/home/jaamo/Documents/videoeditor/master/kampiapina-shorts/projects/paras-keksinto/footage/camera-joined.mp4"
+  },
+  "inserts": {},
+  "inputs": {
+    "camera-joined.mp4": "734188077-1794138167922"
+  }
+}

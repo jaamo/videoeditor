@@ -1,0 +1,20 @@
+{
+ "about": "Speech Whisper left out the first time, transcribed again on its own and added. Seconds of the camera recording. Check these: Whisper may also invent words over noise.",
+ "added": [
+  {
+   "from": 0,
+   "to": 17.8,
+   "text": "Kiitos kun katsoit videon!"
+  },
+  {
+   "from": 62.6,
+   "to": 65.6,
+   "text": "Okei. Niin."
+  },
+  {
+   "from": 85.4,
+   "to": 90.2,
+   "text": "Kiitos kun katsoit videon!"
+  }
+ ]
+}

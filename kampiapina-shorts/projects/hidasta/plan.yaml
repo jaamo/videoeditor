@@ -1,0 +1,81 @@
+# hidasta: first cut of the 2026-11-08 take. Seconds of the camera recording.
+framing:
+  x: 1100
+  y: 860
+  zoom: 1.35
+segments:
+  - from: 44.80
+    to: 45.57
+    why: "the hook, moved to the front: Käytännössä (0.5 s pause after it out)"
+  - from: 46.07
+    to: 47.17
+    why: "joka kerta (0.7 s pause after it out)"
+  - from: 47.85
+    to: 51.55
+    why: "turvallisempi ja järkevämpi vaihtoehto on hidastaa: the thesis"
+    emphasis:
+      - at: 47.85
+        until: 51.55
+        zoom: 1.2
+        why: "the hook's payoff, cut in on the jump cut: turvallisempi ja järkevämpi vaihtoehto on hidastaa"
+  - from: 17.95
+    to: 19.75
+    why: "the setup from the start: Pyöräillessä on (17.9 s of dead air before it out)"
+  - from: 20.00
+    to: 24.68
+    why: "valtaosassa tilanteista kaksi vaihtoehtoa, miten niihin reagoida (breath before it out)"
+  - from: 25.15
+    to: 29.80
+    why: "Voi joko kiihdyttää vauhtia, tai sitten voi hidastaa vauhtia (0.5 s pause before it out)"
+    inserts:
+      - file: "broll/2026-11-06 15.43.03.mp4"
+        at: 25.15
+        until: 27.60
+        from: 68.93
+        look: full
+        why: "the speeding-up pass over Voi joko kiihdyttää vauhtia (the user's pick)"
+      - file: "broll/2026-11-06 15.43.03.mp4"
+        at: 27.60
+        until: 29.80
+        from: 36.37
+        look: full
+        why: "the slowing-down pass over tai sitten voi hidastaa vauhtia (the user's pick), first half"
+  - from: 30.75
+    to: 34.60
+    why: "Jos miettii tilannetta, että mahtuuko tuosta ohi (the 1 s breath before it out)"
+    inserts:
+      - file: "broll/2026-11-06 15.43.03.mp4"
+        at: 30.75
+        until: 32.98
+        from: 38.54
+        look: full
+        why: "the slowing-down pass runs on, hiding the jump cut before Jos miettii"
+  - from: 34.85
+    to: 36.97
+    why: "tai ehdinkö minä noista valoista (0.3 s pause before it out)"
+  - from: 37.50
+    to: 44.07
+    why: "tai mitenhän minun kannattaa tuohon mutkaan ajaa, niin ainoat kaksi vaihtoehtoa on vähän lisätä vauhtia ja vähän hidastaa (breath before it out)"
+  - from: 52.45
+    to: 59.42
+    why: "Valtaosa läheltä piti -tilanteista ... lähdin kiihdyttämään vauhtia, enkä vain (the thesis already heard at the start, and the breath after it, out)"
+  - from: 59.93
+    to: 62.50
+    why: "malttanut ja pikkasen hidastanut vauhtia (0.5 s pause before it out)"
+  - from: 73.05
+    to: 74.30
+    why: "En jakele (the lost thread at 62.5-73.1, Okei, Niin, Niin, out)"
+  - from: 75.07
+    to: 80.84
+    why: "näitä liikenneviisauksia, en ole itse puhdas pulmunen, tulee välillä, että tulee liian kovaa (0.75 s pause before it out)"
+  - from: 81.30
+    to: 82.40
+    why: "mutta vahva suositus (0.5 s pause before it out)"
+  - from: 82.95
+    to: 84.55
+    why: "vauhdin hidastamiselle: the close, after a short beat (the rest of the 0.8 s pause and the dead air after out)"
+    emphasis:
+      - at: 82.95
+        until: 84.55
+        zoom: 1.2
+        why: "the punchline, held to the end: vauhdin hidastamiselle"

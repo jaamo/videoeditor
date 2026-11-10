@@ -1,0 +1,69 @@
+# musat: first cut. Seconds of the camera recording.
+framing: { x: 800, y: 1250, zoom: 1.2 }   # leaning in (from ~40 s): eyes ~1100-1230
+segments:
+  - from: 12.92
+    to: 31.6
+    why: the hook (he makes his own music), why it's great, and the first example; ends on 3 s of its intense music
+    framing: { x: 650, y: 1450 }   # sitting back: eyes ~1350-1370
+    emphasis:
+      - at: 14.7
+        until: 15.95
+        zoom: 1.2
+        why: hook, "musat ite" (cuts in in the gap before "musat")
+    inserts:
+      - file: screen/korkea-intensiteetti.mp4
+        at: 28.0
+        until: 31.6
+        from: 1.0
+        look: full
+        box: [1060, 123, 593, 335]
+        sound: 1
+        why: at "niin kuin tässä", hard riding with its intense music, heard in his pause
+  - from: 32.28
+    to: 44.6
+    why: calm parts, transitions, and the music turning intense again; ends on the music's jump
+    framing: { x: 650, y: 1400 }   # starting to lean in
+    inserts:
+      - file: screen/intensiteetin-muutos.mp4
+        at: 40.55
+        until: 44.6
+        from: 2.8
+        look: full
+        box: [1060, 123, 593, 335]
+        sound: 1
+        why: calm music under "intensiivisemmäksi, niin kuin tässä", its jump lands just after he stops
+  - from: 57.05
+    to: 67.6
+    why: take 2 of the drone line (concrete, fluent), then the crash where the music stops
+    inserts:
+      - file: screen/drone-onnettomuus.mp4
+        at: 62.3
+        until: 67.6
+        from: 2.8
+        look: full
+        box: [1060, 123, 593, 335]
+        sound: 1
+        why: the drone flying into the tree; the music fades out and stops at the crash
+  - from: 69.93
+    to: 72.03
+    why: the lead-in, "Ja tää on niinku sellas, mitä ei silleen" (the pause after it cut)
+  - from: 72.5
+    to: 77.92
+    why: no stock music or AI can do it
+    emphasis:
+      - at: 75.6
+        until: 77.92
+        zoom: 1.25
+        why: the punchline, "ei oikein tekoälylläkään pysty tekee" (cuts in in the gap before "ei")
+  - from: 78.28
+    to: 81.27
+    why: fun to make (pause after "silleen" cut)
+  - from: 81.72
+    to: 83.97
+    why: the rest, "tosi siisti ite tehdä ja nyplätä" ("Se on niinku hauskaa" left out, says it again)
+  - from: 88.12
+    to: 89.9
+    why: "Mä niinku sytyn ite siitä"
+  - from: 94.52
+    to: 97.32
+    why: the close, nobody else does this

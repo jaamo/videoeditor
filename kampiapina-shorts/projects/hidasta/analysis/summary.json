@@ -1,0 +1,26 @@
+{
+  "fps": 30,
+  "main": {
+    "width": 2160,
+    "height": 3840,
+    "durationMs": 90176,
+    "fps": 29.93261926006506,
+    "hasAudio": true,
+    "file": "/home/jaamo/Documents/videoeditor/master/kampiapina-shorts/projects/hidasta/footage/2026-11-08 08.42.00.mp4"
+  },
+  "inserts": {
+    "broll/2026-11-06 15.43.03.mp4": {
+      "width": 2160,
+      "height": 3840,
+      "durationMs": 88603,
+      "fps": 29.321659178035468,
+      "hasAudio": true,
+      "file": "/home/jaamo/Documents/videoeditor/master/kampiapina-shorts/projects/hidasta/footage/broll/2026-11-06 15.43.03.mp4",
+      "kind": "broll"
+    }
+  },
+  "inputs": {
+    "2026-11-08 08.42.00.mp4": "542957573-1794136997340",
+    "broll/2026-11-06 15.43.03.mp4": "534333161-1793979343906"
+  }
+}

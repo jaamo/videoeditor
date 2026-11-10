@@ -1,0 +1,17 @@
+# paras-keksinto: settings of the short (see /make-short)
+language: fi
+grade: 1
+musicVolume: 0.08
+replace:
+  kampi apina: Kampiapina
+  kampiapina: Kampiapina
+  kampi-apina: Kampiapina
+  merokkan: nerokkain
+  merokkain: nerokkain
+  keksintä: keksintö
+  säänin: säädin
+  hieno säätään: hienosäätämään
+  hieno säätämään: hienosäätämään
+  säätäen: säätää
+  Voisin ajaessa: Voi sen ajaessa
+# music: assets/music/track.mp3   # a track under the voice, ducked while speaking

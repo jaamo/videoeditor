@@ -1,0 +1,73 @@
+{
+ "about": "A first guess at what to keep, in seconds of the camera recording: speech without pauses over 1 s, retakes and lone fillers. A starting point, not the plan.",
+ "keep": [
+  [
+   1.8,
+   3.6
+  ],
+  [
+   7.3,
+   14.6
+  ],
+  [
+   15.9,
+   16.4
+  ],
+  [
+   17.8,
+   63.2
+  ],
+  [
+   63.9,
+   65.8
+  ],
+  [
+   66.9,
+   71.9
+  ],
+  [
+   72.9,
+   84.7
+  ],
+  [
+   85.3,
+   87.8
+  ],
+  [
+   88.9,
+   89.6
+  ]
+ ],
+ "removed": [
+  {
+   "from": 0,
+   "to": 1.8,
+   "why": "silence"
+  },
+  {
+   "from": 3.6,
+   "to": 7.3,
+   "why": "silence"
+  },
+  {
+   "from": 14.6,
+   "to": 15.9,
+   "why": "silence"
+  },
+  {
+   "from": 16.4,
+   "to": 17.8,
+   "why": "silence"
+  },
+  {
+   "from": 65.8,
+   "to": 66.9,
+   "why": "silence"
+  },
+  {
+   "from": 87.8,
+   "to": 88.9,
+   "why": "silence"
+  }
+ ]
+}

@@ -1,0 +1,28 @@
+# The captions of the cut, a line each, as [start–end] text in seconds of the cut.
+# Fix the text (spelling, a word misheard, where a line breaks); leave the times.
+# A line's words keep their own timing while their count is the same; otherwise
+# they're spread over the line. Delete a line to drop it.
+# cut: 623da9dac2ce
+[0.16–1.68] Moikka.
+[1.72–2.48] Voisin ihan
+[2.48–3.68] nopeasti demottaa
+[3.68–4.24] tätä meidän
+[4.24–5.46] Outerview-tuotetta.
+[5.46–7.02] Jos te menette
+[7.02–7.82] sinne
+[7.82–9.10] kuuntelemaan.
+[9.24–9.78] Tämä on siis
+[9.78–10.22] tuote,
+[10.22–12.22] joka luo sisältöjä
+[12.22–12.96] haastatteluiden
+[12.96–14.10] perusteella.
+[14.16–14.92] Etusivu näyttää
+[14.92–16.40] meille tältä.
+[16.40–18.36] Tästä voin lähteä
+[18.36–19.70] tekemään uutta
+[19.70–21.02] haastattelua.
+[21.02–22.80] Otetaan tuosta,
+[22.80–23.68] että otetaan oma
+[23.68–24.16] aihe.
+[24.16–24.32] on se,
+[24.32–25.78] mitä haluaisin.

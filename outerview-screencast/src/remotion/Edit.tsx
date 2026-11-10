@@ -52,7 +52,7 @@ export const Edit = (m: EditManifest) => {
               <Segment m={m} i={i} />
             </Sequence>
           ))}
-          <Captions steps={[{ startMs: 0, endMs: m.cutMs, words: m.words }]} top={900} fontSize={52} maxWidth={1200} />
+          <Captions steps={[{ startMs: 0, endMs: m.cutMs, words: m.words }]} lines={m.lines} top={900} fontSize={52} maxWidth={1200} />
         </Fade>
         {m.segments.map((s, i) => {
           const last = frames(s);

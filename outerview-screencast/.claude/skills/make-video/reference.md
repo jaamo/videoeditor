@@ -7,8 +7,9 @@ writes files there, so any of them can be read, fixed by hand, or done again on 
 
 1920×1080, 30 fps:
 
-1. **Opening title** (`titles.yaml`): the title a word at a time, an optional subtitle,
-   on the call screen's red backdrop. 0.4 s a word, then 3 s.
+1. **No opening title**: the video starts straight on the cut. `titles.yaml` always has
+   `opening: false`; an opening title card (the title a word at a time, an optional
+   subtitle, 0.4 s a word, then 3 s) only when the user asks for one.
 2. **The cut** (`plan.yaml`), in two layouts:
    - `face`: the face camera alone, full height in the middle, black at the sides. For the
      intro (hello, what this is) and the outro (the wrap-up, goodbye).
@@ -20,7 +21,7 @@ writes files there, so any of them can be read, fixed by hand, or done again on 
 3. **End card**: Maya's ribbon, the logo, an optional line under it (`endLine`), 4 s.
 
 Music runs under everything, ducked while someone speaks. The voice is the main
-recording's, cleaned (ElevenLabs voice isolation, then mastered to -16 LUFS).
+recording's, cleaned locally (a noise filter, then mastered to -16 LUFS).
 
 ## Commands
 
@@ -34,7 +35,10 @@ All from the repository root, `npm run -s video -- <command> <name> …`:
 | `level <name> <from> <to>` | the clean voice's loudness (dBFS) every 50 ms, at most 30 s: where a word really starts and ends. Speech is about -20, quiet under -45; a cut where it's over -38 is heard |
 | `titles <name>` | stills of the opening title and the end card, to `tmp/titles-*.png` |
 | `check <name>` | the plan's errors and warnings (a cut where the voice is loud, among them), and what each segment says |
-| `render <name> [--sample <from> <to>]` | `out.mp4`, or `sample.mp4` of seconds of the video |
+| `kdenlive <name> [--force]` | the draft: the plan as `<name>.kdenlive` with its captions on the Subtitles track, and proxies of the footage. `--force` replaces one there (and the fixes made in it; a copy goes to `tmp/`) |
+| `open <name>` | opens the draft in Kdenlive |
+| `captions <name> [--force]` | the draft's captions made again from its cut as it is now (losing fixes made to them) |
+| `render <name> [--sample <from> <to>]` | `out.mp4`, or `sample.mp4` of seconds of the video. With a draft, its cut and captions |
 | `review <name> [--sample]` | checks of the video: `review/report.md` and `review/sheet-*.jpg` |
 | `comments <name> [--sample] [--port 4321]` | a page to watch the video in and comment on moments of it, saved to `comments.yaml`. Runs until stopped |
 
@@ -44,7 +48,7 @@ Everything in `analysis/`, `plan.yaml` and the `frame` command for screen/face i
 **seconds of the main recording**: the face camera's when it has sound, else the screen's
 (`analysis/summary.json` says which, and where the other one starts in that time:
 `startMs`, negative if it started first). The review is in seconds of the finished video
-(the opening title first).
+(an opening title first, if there is one).
 
 The other recording is placed by matching the sound of the two: `syncConfidence` is how far
 the best match stands out, over 8 clear, under 5 worth checking by eye (a click, a page
@@ -59,9 +63,7 @@ projects/<name>/
                         screen (or named …face… / …screen…). Either may be missing.
   analysis/
     summary.json        which recording is main, sizes, durations, where each starts, sync confidence
-    voice.wav           the clean voice (voice.isolated.wav: ElevenLabs' take, if it was made;
-                        voice.refused.txt: ElevenLabs refused the key, not asked again until
-                        it's deleted)
+    voice.wav           the clean voice (voice.raw.wav: the recording's sound as it was)
     transcript.json     every word: { text, startMs, endMs }, main recording's ms. Whisper
                         leaves out stretches sometimes; those are transcribed again and put in
                         (transcript-gaps.json lists them; transcript.whisper.json is the first go)
@@ -79,6 +81,9 @@ projects/<name>/
     findings.md         the analyzer's notes (it returns them, the skill saves them)
   titles.yaml           title, subtitle, endLine
   plan.yaml             the edit
+  <name>.kdenlive       the draft: the plan in Kdenlive, fixed there by the user (see below)
+  <name>.kdenlive.ass   its Subtitles track: the captions, fixed there
+  proxy/                small copies of the footage Kdenlive plays (the render uses the originals)
   review/               report.md, heard.json, sheet-*.jpg, frames/
   review.md             the reviewer's verdict and fixes (saved by the skill, like findings.md)
   comments.yaml         the user's comments from the comments page: t (seconds of the video), at,
@@ -97,7 +102,7 @@ folder, not /tmp). `npx remotion ffprobe` reads any file.
 title: Outerview kahdessa minuutissa   # 2–5 words, in the video's language
 subtitle: Haastattelusta postaukseksi  # optional, up to ~6 words
 endLine: outerview.app                 # optional, one short line on the end card
-opening: false                         # optional: leave the opening title card out
+opening: false                         # always, unless the user asks for an opening title card
 ```
 
 ## plan.yaml
@@ -131,6 +136,28 @@ replace:                  # optional, caption spelling fixes on top of project.y
   Autervju: Outerview
 musicVolume: 0.1          # optional, music level under speech
 ```
+
+## The draft (Kdenlive)
+
+Made from the plan before rendering, for the user to watch and fix by hand: quicker than a
+render. Tracks, bottom to top: **Sound** (the clean voice, or the screen's own sound for
+`sound: screen`, each piece faded in and out over two frames), **Screen** (the screen
+recording whole, no zooms), **Face** (small in the bottom right corner, the whole way,
+whatever the layout). A piece's three clips are grouped. Guides: each segment (`3 screen:
+why`) and each zoom.
+
+The render reads it back:
+
+- **The cut** is the Sound track's pieces, where they are: each a piece of the main
+  recording. The picture is laid out from those (a screen or face clip moved out of step with
+  its sound is warned about, and shown in step).
+- **Layouts and zooms** come from `plan.yaml`, by the recording's time: a piece takes the
+  layout of the plan's segment holding most of it, and the plan's zooms that start inside it.
+  So a layout or zoom change is a plan change, with no new draft.
+- **Captions** are the Subtitles track's lines, their text and times as fixed there; the
+  words in them are lit up by the transcript's times.
+- `check` is still the plan's: once there's a draft, the cut's own problems (a cut where the
+  voice is loud) are the user's, in Kdenlive.
 
 ## Editing rules
 

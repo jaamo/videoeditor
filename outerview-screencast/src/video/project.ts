@@ -6,6 +6,7 @@
 //   analysis/           what the analyzer found: transcript, voice, screen events, contact sheets
 //   titles.yaml         the opening title and the end card's line
 //   plan.yaml           the edit: which pieces, in what layout, with which zooms
+//   <name>.kdenlive     the draft of the plan, fixed by hand in Kdenlive; the render's cut (and .ass, its captions)
 //   review/             the reviewer's checks of out.mp4
 //   tmp/                everything else made along the way
 //   out.mp4, sample.mp4
@@ -40,6 +41,12 @@ export function paths(name: string) {
     findings: a("findings.md"),
     titles: path.join(dir, "titles.yaml"),
     plan: path.join(dir, "plan.yaml"),
+    /** The draft in Kdenlive: the cut to fix by hand, read back by the render. */
+    kdenlive: path.join(dir, `${name}.kdenlive`),
+    /** Its Subtitles track: the captions, fixed in Kdenlive, drawn by the render. */
+    subtitles: path.join(dir, `${name}.kdenlive.ass`),
+    /** Kdenlive's proxies of the footage (the render uses the originals). */
+    proxy: path.join(dir, "proxy"),
     review: path.join(dir, "review"),
     tmp: path.join(dir, "tmp"),
     out: path.join(dir, "out.mp4"),

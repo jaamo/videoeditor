@@ -4,10 +4,14 @@
 //   npm run video -- frame <name> <screen|face|out> <seconds> [x,y,w,h]   one frame to look at
 //   npm run video -- titles <name>                stills of the opening title and the end card
 //   npm run video -- check <name>                 the plan's problems, before rendering
-//   npm run video -- render <name> [--sample <from> <to>]   out.mp4 (or sample.mp4, seconds of the video)
+//   npm run video -- kdenlive <name> [--force]    the draft: the plan as <name>.kdenlive, captions on its Subtitles track
+//   npm run video -- open <name>                  opens the draft in Kdenlive, to fix the cut and the captions
+//   npm run video -- captions <name> [--force]    the draft's captions made again from its cut as it is now
+//   npm run video -- render <name> [--sample <from> <to>]   out.mp4 (or sample.mp4, seconds of the video), from the draft if there is one
 //   npm run video -- review <name>                checks of out.mp4: heard against planned, sound, frames
 //   npm run video -- comments <name> [--sample] [--port 4321]   watch it in the browser, comment on moments
 // Times are seconds of the main recording (see analysis/summary.json), except where said.
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { copyFile, link, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -16,10 +20,13 @@ import { editDurationMs, openingMs } from "../remotion/Edit.tsx";
 import { introDurationMs } from "../remotion/titles/Intro.tsx";
 import { END_MS } from "../remotion/titles/End.tsx";
 import type { EditManifest, Word } from "../types.ts";
+import { applyReplacements } from "../screencast/edit.ts";
 import { roughCut } from "../screencast/rough-cut.ts";
 import { run } from "../screencast/run.ts";
 import { ensureWhisper, toWhisperWav, whisperWords } from "../screencast/whisper.ts";
-import { contactSheets, ff, ffReport, fingerprint, levels, probe, still } from "./media.ts";
+import { contactSheets, ff, ffReport, fingerprint, levels, makeProxy, probe, PROXY_PARAMS, still } from "./media.ts";
+import { buildDraft, captionLines, readAss, readDraft, segmentsOfDraft, showSubtitles, timeCaptions, wordsOfCut, writeAss } from "./draft.ts";
+import { originalOf, Project, producersOf, prop, setProp } from "../screencast/kdenlive-xml.ts";
 import {
   checkPlan, clock, FPS, footageOf, homeSegments, LOUD_AT_CUT_DB, manifestOf, paths, readJson, readYaml, seconds, transcriptText,
   type Paths, type Placed, type Plan, type Settings, type Summary, type Titles,
@@ -27,14 +34,14 @@ import {
 import { serveComments } from "./comments.ts";
 import { screenEvents } from "./screen.ts";
 import { offsetOf } from "./sync.ts";
-import { isIsolated, makeVoice, refusedFile } from "./voice.ts";
+import { makeVoice } from "./voice.ts";
 
 const SPELLING = { Audiview: "Outerview", Audaview: "Outerview", Audioview: "Outerview", "outer view": "Outerview", Maija: "Maya", Maijan: "Mayan", Maijalle: "Mayalle" };
 const DEFAULT_MUSIC = "assets/music/She No Dull Beat - Nana Kwabena.mp3";
 
 const [cmd, name, ...rest] = process.argv.slice(2);
 if (!cmd || !name || !/^[\p{Ll}\p{N}][\p{Ll}\p{N}-]*$/u.test(name)) {
-  console.error("Usage: npm run video -- <init|analyze|frame|titles|check|render|review> <name>  (name: lowercase letters, digits, dashes)");
+  console.error("Usage: npm run video -- <init|analyze|frame|level|titles|check|kdenlive|open|captions|render|review|comments> <name>  (name: lowercase letters, digits, dashes)");
   process.exit(2);
 }
 const p = paths(name);
@@ -42,7 +49,7 @@ const log = (s: string) => console.log(s);
 const rel = (f: string) => path.relative(process.cwd(), f);
 const s1 = (ms: number) => Math.round(ms / 100) / 10;
 
-const commands: Record<string, () => Promise<void>> = { init, analyze, frame, level, titles, check, render, review, comments };
+const commands: Record<string, () => Promise<void>> = { init, analyze, frame, level, titles, check, kdenlive, open, captions, render, review, comments };
 if (!commands[cmd]) throw new Error(`Unknown command ${cmd}`);
 if (cmd !== "init" && !existsSync(p.dir)) throw new Error(`No project ${rel(p.dir)}: npm run video -- init ${name}`);
 await commands[cmd]();
@@ -104,8 +111,7 @@ async function analyze() {
     await writeFile(p.summary, JSON.stringify(summary, null, 2));
   }
 
-  // Without ElevenLabs' take (there was no key then), it's tried again; not after a refusal.
-  if (!existsSync(p.voice) || (process.env.ELEVENLABS_API_KEY && !isIsolated(p.voice) && !existsSync(refusedFile(p.voice)))) await makeVoice(main.file, p.voice, log);
+  if (!existsSync(p.voice)) await makeVoice(main.file, p.voice, log);
   else log("voice: done before");
 
   // Where the clean voice is quiet (first: it also shows where Whisper missed speech): exact cut points where Whisper's word times are stretched.
@@ -184,10 +190,10 @@ async function analyze() {
   log(`main recording: ${mainKind} (${clock(summary.durationMs)})`);
 }
 
-/** The screen recording's own sound, mastered but not isolated (it keeps the app's voice), made once. */
+/** The screen recording's own sound, mastered (it keeps the app's voice), made once. */
 async function screenSound(summary: Summary): Promise<string> {
   const out = path.join(p.analysis, "screen-sound.wav");
-  if (!existsSync(out)) await makeVoice(summary.screen!.file, out, (s) => log(s.replace(/^voice:/, "screen sound:")), { isolate: false });
+  if (!existsSync(out)) await makeVoice(summary.screen!.file, out, (s) => log(s.replace(/^voice:/, "screen sound:")));
   return out;
 }
 
@@ -304,7 +310,7 @@ async function titles() {
   const introMs = introDurationMs({ title: t.title });
   const shots = [
     { comp: "Intro", props: { title: t.title, subtitle: t.subtitle }, ms: introMs - 300, out: "titles-intro.png" },
-    { comp: "End", props: { line: t.endLine }, ms: 1800, out: "titles-end.png" },
+    { comp: "End", props: { line: t.endLine }, ms: 1100, out: "titles-end.png" },
   ];
   for (const s of shots) {
     const out = path.join(p.tmp, s.out);
@@ -334,11 +340,127 @@ async function check() {
   log(problems.length ? "\nno errors (see the warnings)" : "\nno problems");
 }
 
+// --- the draft in Kdenlive --------------------------------------------------------------
+// The plan as <name>.kdenlive: watched and fixed by hand there (the cut, the captions on its
+// Subtitles track), quicker than rendering. The render reads it back.
+
+async function kdenlive() {
+  const { summary, plan, words } = await loadForRender();
+  const errors = checkPlan(plan, summary, words).filter((x) => x.level === "error");
+  if (errors.length) throw new Error(`The plan has errors: npm run video -- check ${name}\n${errors.map((e) => `  ${e.where}: ${e.what}`).join("\n")}`);
+  await mkdir(p.tmp, { recursive: true });
+  for (const f of [p.kdenlive, p.subtitles]) {
+    if (!existsSync(f)) continue;
+    if (!rest.includes("--force")) throw new Error(`${rel(f)} is there already, maybe with fixes made in Kdenlive: --force replaces it (keeping a copy in tmp/)`);
+    const backup = path.join(p.tmp, `${Date.now()}.${path.basename(f)}`);
+    await copyFile(f, backup);
+    log(`the one before: ${rel(backup)}`);
+  }
+  const screenSoundFile = plan.segments.some((s) => s.sound === "screen") ? await screenSound(summary) : undefined;
+  const { project, warnings } = buildDraft({ plan, summary, voice: p.voice, screenSound: screenSoundFile, root: p.dir });
+  for (const w of warnings) log(`warning: ${w}`);
+  // The captions as the render would draw them from the plan (its text and spelling fixes), a line each.
+  const m = manifestOf({ plan, summary, titles: { title: name }, settings: await loadSettings(), words, published: { voice: "" } });
+  const lines = captionLines(m.words);
+  await writeFile(p.subtitles, writeAss(lines));
+  showSubtitles(project, p.subtitles);
+  await writeFile(p.kdenlive, project.toString());
+  const zooms = m.zooms.length;
+  log(`${rel(p.kdenlive)}: ${plan.segments.length} pieces, ${clock(m.cutMs)}; ${lines.length} captions on its Subtitles track${zooms ? `; ${zooms} zooms marked by guides (the render does them)` : ""}`);
+  await addProxies();
+}
+
+/**
+ * Proxies on in the draft, and one made for each big video in it (the 4K face, the screen),
+ * which Kdenlive plays instead: smooth to scrub. The render uses the originals.
+ */
+async function addProxies() {
+  const [PROXY_MIN_SIZE, PROXY_WIDTH] = [1000, 640];
+  const pj = new Project(await readFile(p.kdenlive, "utf8"));
+  const bin = pj.mlt.children.find((n) => n.attrs.id === "main_bin");
+  if (!bin) throw new Error(`No bin in ${rel(p.kdenlive)}`);
+  const settings: Record<string, string | number> = {
+    enableproxy: 1, generateproxy: 1, proxyminsize: PROXY_MIN_SIZE, proxyresize: PROXY_WIDTH, proxyextension: "mkv", proxyparams: PROXY_PARAMS,
+    generateimageproxy: 0, enableexternalproxy: 0,
+  };
+  for (const [k, v] of Object.entries(settings)) setProp(bin, `kdenlive:docproperties.${k}`, v);
+  await mkdir(p.proxy, { recursive: true });
+  const made = new Map<string, string | null>();
+  let fresh = 0;
+  for (const n of producersOf(pj)) {
+    const original = originalOf(n, prop(n, "resource")!);
+    const file = path.resolve(pj.mlt.attrs.root ?? p.dir, original);
+    if (!made.has(file)) {
+      let proxyFile: string | null = null;
+      if (/\.(mp4|mkv|mov|webm|avi|m4v)$/i.test(file) && existsSync(file)) {
+        const pr = probe(file);
+        if (Math.max(pr.width, pr.height) >= PROXY_MIN_SIZE) {
+          proxyFile = path.join(p.proxy, `${path.basename(file).replace(/\.[^.]+$/, "").replace(/[^\w.-]+/g, "_")}.${fingerprint(file)}.mkv`);
+          if (!existsSync(proxyFile)) {
+            log(`proxy: ${rel(file)} (${clock(pr.durationMs)})…`);
+            await makeProxy(file, proxyFile, PROXY_WIDTH);
+            fresh++;
+          }
+        }
+      }
+      made.set(file, proxyFile);
+    }
+    const proxyFile = made.get(file);
+    if (!proxyFile) continue;
+    setProp(n, "kdenlive:originalurl", original);
+    setProp(n, "kdenlive:proxy", proxyFile);
+    setProp(n, "resource", proxyFile);
+    if (prop(n, "warp_resource")) setProp(n, "warp_resource", proxyFile);
+  }
+  await writeFile(p.kdenlive, pj.toString());
+  log(`proxies: ${[...made.values()].filter(Boolean).length} in ${rel(p.proxy)}/ (${fresh} made now)`);
+}
+
+async function open() {
+  if (!existsSync(p.kdenlive)) throw new Error(`No ${rel(p.kdenlive)} yet: npm run video -- kdenlive ${name}`);
+  const flatpak = spawnSync("flatpak", ["info", "org.kde.kdenlive"], { stdio: "ignore" }).status === 0;
+  const [c, ...args] = flatpak ? ["flatpak", "run", "org.kde.kdenlive"] : ["kdenlive"];
+  const app = spawn(c, [...args, p.kdenlive], { detached: true, stdio: "ignore" });
+  app.on("error", () => log(`Couldn't start Kdenlive: open ${rel(p.kdenlive)} in it yourself`));
+  app.unref();
+  log(`Kdenlive: ${rel(p.kdenlive)}`);
+}
+
+/** The draft's cut as the render plays it: its pieces, laid out by the plan, and the transcript's words where they're said in it. */
+async function draftCut(summary: Summary, plan: Plan, words: Word[]) {
+  const { pieces, warnings } = readDraft(await readFile(p.kdenlive, "utf8"), { voice: p.voice, screenSound: path.join(p.analysis, "screen-sound.wav"), summary });
+  if (!pieces.length) throw new Error(`No pieces of ${rel(p.voice)} on the Sound track of ${rel(p.kdenlive)}: nothing to render`);
+  const cut = segmentsOfDraft(pieces, plan);
+  const settings = await loadSettings();
+  return { cut, warnings, words: applyReplacements(wordsOfCut(words, cut.segments), { ...settings.replace, ...plan.replace }) };
+}
+
+/** The draft's captions made again, from the transcript where its cut says it now (fixes made to them are lost). */
+async function captions() {
+  if (!existsSync(p.kdenlive)) throw new Error(`No ${rel(p.kdenlive)} yet: npm run video -- kdenlive ${name}`);
+  if (existsSync(p.subtitles)) {
+    if (!rest.includes("--force")) throw new Error(`${rel(p.subtitles)} is there, maybe with captions fixed in Kdenlive: --force makes them again from the cut as it is now (keeping a copy in tmp/)`);
+    await mkdir(p.tmp, { recursive: true });
+    const backup = path.join(p.tmp, `${Date.now()}.${path.basename(p.subtitles)}`);
+    await copyFile(p.subtitles, backup);
+    log(`the captions before: ${rel(backup)}`);
+  }
+  const { summary, plan, words } = await loadForRender();
+  const { words: said } = await draftCut(summary, plan, words);
+  const lines = captionLines(said);
+  await writeFile(p.subtitles, writeAss(lines));
+  const pj = new Project(await readFile(p.kdenlive, "utf8"));
+  if (showSubtitles(pj, p.subtitles)) await writeFile(p.kdenlive, pj.toString());
+  log(`${rel(p.subtitles)}: ${lines.length} captions (${said.length} words)`);
+  log("(if the draft is open in Kdenlive, reopen it without saving: saving there writes its old captions over these)");
+}
+
 // --- render ----------------------------------------------------------------------------
 
 async function render() {
   const { summary, plan, words } = await loadForRender();
-  const errors = checkPlan(plan, summary, words, await levels(p.voice)).filter((x) => x.level === "error");
+  // With a draft, the cut is Kdenlive's: the plan gives only the layouts and zooms.
+  const errors = checkPlan(plan, summary, words, await levels(p.voice)).filter((x) => x.level === "error" && (!existsSync(p.kdenlive) || x.where.includes("zoom") || /layout/.test(x.what)));
   if (errors.length) throw new Error(`The plan has errors: npm run video -- check ${name}\n${errors.map((e) => `  ${e.where}: ${e.what}`).join("\n")}`);
   const settings = await loadSettings();
   const t = existsSync(p.titles) ? await readYaml<Titles>(p.titles) : { title: name };
@@ -364,6 +486,20 @@ async function render() {
   await run("sh", ["-c", `cp -r assets/titles/* "${pub}"`]);
 
   const manifest = manifestOf({ plan, summary, titles: t, settings, words, published });
+  // The draft, fixed in Kdenlive: its cut and its captions over the plan's.
+  if (existsSync(p.kdenlive)) {
+    const d = await draftCut(summary, plan, words);
+    for (const w of d.warnings) log(`warning: ${w}`);
+    Object.assign(manifest, d.cut, { words: d.words });
+    if (existsSync(p.subtitles)) {
+      const caps = readAss(await readFile(p.subtitles, "utf8"));
+      for (const c of caps) if (!d.words.some((w) => w.endMs > c.startMs && w.startMs < c.endMs)) log(`warning: nothing is said under the caption at ${s1(c.startMs)} s: «${c.text}»`);
+      manifest.lines = timeCaptions(caps, d.words);
+      manifest.words = manifest.lines.flatMap((l) => l.words);
+    }
+    if (d.cut.segments.some((s) => s.sound === "screen")) manifest.screenSound = await publish(await screenSound(summary), "screen-sound.wav");
+    log(`from ${rel(p.kdenlive)}: ${manifest.segments.length} pieces, ${clock(manifest.cutMs)}${manifest.lines ? `, ${manifest.lines.length} captions from its Subtitles track` : ""}`);
+  }
   const props = path.join(p.tmp, "manifest.json");
   await writeFile(props, JSON.stringify(manifest));
   const total = Math.round((editDurationMs(manifest) / 1000) * FPS);
@@ -429,7 +565,7 @@ async function review() {
     if (i && s.layout !== manifest.segments[i - 1].layout) shots.push({ ms: introMs + s.atMs + 900, what: `segment ${i + 1}: layout now ${s.layout}` });
   });
   manifest.zooms.forEach((z, i) => shots.push({ ms: introMs + z.atMs + 1000, what: `zoom ${i + 1}, settled` }));
-  shots.push({ ms: introMs + manifest.cutMs + 1800, what: "end card" });
+  shots.push({ ms: introMs + manifest.cutMs + 1100, what: "end card" });
   shots.sort((a, b) => a.ms - b.ms);
   report.push("## Frames", "", `In ${rel(p.review)}/sheet-*.jpg, nine a sheet (three a row, left to right), in this order; one each in frames/NNN.jpg:`, "");
   for (const [i, s] of shots.entries()) {

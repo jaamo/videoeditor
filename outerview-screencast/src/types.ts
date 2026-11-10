@@ -205,4 +205,6 @@ export type EditManifest = {
   cutMs: number;
   /** Captions, timed from the start of the cut. */
   words: Word[];
+  /** The caption lines as fixed in the Kdenlive draft (ms of the cut), instead of `words` cut into lines. */
+  lines?: { startMs: number; endMs: number; words: Word[] }[];
 };

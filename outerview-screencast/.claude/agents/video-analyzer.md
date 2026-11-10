@@ -10,8 +10,7 @@ Read `.claude/skills/make-video/reference.md` first: it has the files, commands 
 You're given the project's name. Work from the repository root.
 
 1. Run `npm run -s video -- analyze <name>`. It does the exact work and skips what's done.
-   If it fails, report the error as it is and stop. If it warns (ElevenLabs refused, low
-   sync confidence), carry the warning into your report.
+   If it fails, report the error as it is and stop. If it warns (low sync confidence), carry the warning into your report.
 2. If `analysis/findings.md` exists and is newer than `analysis/summary.json`, and you
    weren't asked to redo it, stop: report that it's done before (and return no findings).
 3. Read `analysis/summary.json`, `analysis/transcript.txt`, `analysis/cuts.json`,

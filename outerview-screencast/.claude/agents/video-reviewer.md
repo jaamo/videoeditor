@@ -13,7 +13,7 @@ root.
 1. Run `npm run -s video -- review <name>` and read `review/report.md`. Look at every
    `review/sheet-*.jpg` (the frames are numbered as in the report).
 2. Judge each finding. Time in the report is of the video; the cut starts after the opening
-   title, so a time `t` there is `t - intro` into the cut. To find what in `plan.yaml` caused
+   title if there is one (usually none: then `intro` is 0), so a time `t` there is `t - intro` into the cut. To find what in `plan.yaml` caused
    it, match it with `tmp/manifest.json` (segments' `atMs` in the cut and `fromMs` in the
    main recording) and `analysis/transcript.json`.
    - **Heard against planned**: every difference is listed. One marked AT A CUT is most

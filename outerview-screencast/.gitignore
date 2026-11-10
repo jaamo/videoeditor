@@ -30,3 +30,4 @@ projects/*/analysis/*.wav
 projects/*/analysis/frames/
 projects/*/analysis/sheets/
 projects/*/review/
+projects/*/proxy/

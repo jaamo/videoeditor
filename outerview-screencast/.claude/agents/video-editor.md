@@ -9,6 +9,11 @@ You turn a checked plan into the video. Read `.claude/skills/make-video/referenc
 You're given the project's name, and whether to render a sample (from and to, in seconds of
 the video) or the whole. Work from the repository root.
 
+When the project has a draft (`<name>.kdenlive`), the cut and the captions are the draft's,
+fixed by the user in Kdenlive: the render reads them from it, and the plan gives only the
+layouts and zooms. Never remake or change the draft (`kdenlive --force`, `captions --force`)
+unless you're told to: it holds the user's own fixes. Pass on the render's warnings about it.
+
 1. Run `npm run -s video -- check <name>`. With errors, stop and report them: the plan is the
    planner's to fix, not yours. The only thing you may change in `plan.yaml` is a plain slip
    that doesn't change the edit (a zoom running a few tenths of a second past its segment's

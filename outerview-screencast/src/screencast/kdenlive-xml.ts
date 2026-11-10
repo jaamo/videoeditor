@@ -10,8 +10,13 @@ export type XmlNode = { tag: string; attrs: Record<string, string>; children: Xm
 export type Filter = Record<string, string> & { mlt_service: string };
 
 /** A clip on a track: where it is, and which frames of which file (of it sped up, for a speed change). */
-export type TimelineClip = { at: number; inF: number; outF: number; resource: string; speed: number };
-export type TimelineTrack = { node: XmlNode; audio: boolean; playlists: XmlNode[]; clips: TimelineClip[] };
+export type TimelineClip = {
+  at: number; inF: number; outF: number; resource: string; speed: number;
+  /** The producer's MLT service (avformat, chain, color, qimage, kdenlivetitle…), and the clip's effects. */
+  service?: string; filters?: XmlNode[];
+};
+/** `hidden`: the track's eye (video) or speaker (audio) switched off in Kdenlive. */
+export type TimelineTrack = { node: XmlNode; audio: boolean; playlists: XmlNode[]; clips: TimelineClip[]; hidden?: boolean; filters?: XmlNode[] };
 
 export class Project {
   readonly mlt: XmlNode;
@@ -63,12 +68,19 @@ export class Project {
           const outF = this.frames(e.attrs.out);
           const p = this.byId.get(e.attrs.producer)!;
           const warp = prop(p, "mlt_service") === "timewarp";
-          const resource = path.resolve(root, (warp ? prop(p, "warp_resource") : prop(p, "resource")) ?? "");
-          clips.push({ at: pos, inF, outF, resource, speed: warp ? Number(prop(p, "warp_speed")) : 1 });
+          // A clip shown by its proxy is read as its original: the render and checks use the full file.
+          const resource = path.resolve(root, originalOf(p, (warp ? prop(p, "warp_resource") : prop(p, "resource")) ?? ""));
+          const service = warp ? "timewarp" : (prop(p, "mlt_service") ?? p.tag);
+          clips.push({ at: pos, inF, outF, resource, speed: warp ? Number(prop(p, "warp_speed")) : 1, service, filters: e.children.filter((c) => c.tag === "filter") });
           pos += outF - inF + 1;
         }
       }
-      this.tracks.push({ node, audio: prop(node, "kdenlive:audio_track") === "1", playlists: sub, clips: clips.sort((a, b) => a.at - b.at) });
+      const audio = prop(node, "kdenlive:audio_track") === "1";
+      // Kdenlive hides a track on its playlists: a video track normally hides its audio, an
+      // audio track its video; "both" is the eye (or the speaker) switched off.
+      const hides = [t.attrs.hide, ...node.children.filter((n) => n.tag === "track").map((n) => n.attrs.hide)];
+      const hidden = hides.some((h) => h === "both" || h === (audio ? "audio" : "video"));
+      this.tracks.push({ node, audio, playlists: sub, clips: clips.sort((a, b) => a.at - b.at), hidden, filters: node.children.filter((c) => c.tag === "filter") });
     }
   }
 
@@ -189,24 +201,25 @@ export class Project {
   }
 
   /** A new clip in the bin, and the copy of it the timeline uses (Kdenlive keeps one each). */
-  addClip(name: string, resource: string, frames: number): string {
+  addClip(name: string, resource: string, frames: number, o: { image?: boolean } = {}): string {
     const ids = this.mlt.children.map((n) => Number(prop(n, "kdenlive:id"))).filter(Number.isFinite);
     const props = {
       length: frames,
       eof: "pause",
       resource,
-      mlt_service: "avformat-novalidate",
-      seekable: 1,
+      // A still is Kdenlive's image clip, as long as it's placed for.
+      ...(o.image ? { mlt_service: "qimage", ttl: 25, "kdenlive:clip_type": 5 } : { mlt_service: "avformat-novalidate", seekable: 1 }),
       "kdenlive:id": Math.max(3, ...ids) + 1,
       "kdenlive:control_uuid": `{${randomUUID()}}`,
       "kdenlive:clipname": name,
       "kdenlive:folderid": -1,
     };
-    const binCopy = this.newId("chain");
-    const timelineCopy = this.newId("chain");
+    const binCopy = this.newId(o.image ? "producer" : "chain");
+    const timelineCopy = this.newId(o.image ? "producer" : "chain");
     // Before anything that uses them.
     const first = this.mlt.children.findIndex((n) => n.tag !== "profile");
-    this.mlt.children.splice(first, 0, node("chain", { id: binCopy, in: 0, out: frames - 1 }, props), node("chain", { id: timelineCopy, in: 0, out: frames - 1 }, props));
+    const tag = o.image ? "producer" : "chain";
+    this.mlt.children.splice(first, 0, node(tag, { id: binCopy, in: 0, out: frames - 1 }, props), node(tag, { id: timelineCopy, in: 0, out: frames - 1 }, props));
     this.byId.get("main_bin")!.children.push(node("entry", { in: 0, out: frames - 1, producer: binCopy }, {}));
     this.byId.set(timelineCopy, this.mlt.children[first + 1]);
     return timelineCopy;
@@ -309,6 +322,17 @@ export class Project {
     }
   }
 
+  /** Every proxied clip back to its own file (for drawing frames as the render does). */
+  useOriginals() {
+    for (const n of producersOf(this)) {
+      const res = prop(n, "resource")!;
+      const original = originalOf(n, res);
+      if (original !== res) setProp(n, "resource", original);
+      const warp = prop(n, "warp_resource");
+      if (warp && originalOf(n, warp) !== warp) setProp(n, "warp_resource", originalOf(n, warp));
+    }
+  }
+
   /** An effect on a whole track, or on the sequence; its keyframes are in timeline frames. */
   addFilter(on: XmlNode, f: Filter) {
     on.children.push(node("filter", { id: this.newId("filter") }, f));
@@ -325,6 +349,16 @@ export class Project {
     return `${kind}${n}`;
   }
 }
+
+/** A producer's own file, where Kdenlive shows it by its proxy (resource: the proxy; kdenlive:originalurl: the file). */
+export function originalOf(n: XmlNode, resource: string): string {
+  const proxy = prop(n, "kdenlive:proxy");
+  const original = prop(n, "kdenlive:originalurl");
+  return proxy && proxy !== "-" && original && resource.endsWith(path.basename(proxy)) ? original : resource;
+}
+
+/** Producers with a file: a bin clip and each copy of it on the timeline. */
+export const producersOf = (pj: Project) => pj.mlt.children.filter((n) => (n.tag === "producer" || n.tag === "chain") && prop(n, "resource"));
 
 export function prop(n: XmlNode, name: string): string | undefined {
   return n.children.find((c) => c.tag === "property" && c.attrs.name === name)?.text;

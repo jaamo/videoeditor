@@ -15,7 +15,7 @@ export const Captions = ({
 }: {
   steps: Pick<ManifestStep, "startMs" | "endMs" | "words">[];
   /** Lines made by hand, shown until their end, instead of the steps' words cut into lines. */
-  lines?: { endMs: number; words: Word[] }[];
+  lines?: { startMs?: number; endMs: number; words: Word[] }[];
   top?: number; fontSize?: number; maxWidth?: number;
 }) => {
   const frame = useCurrentFrame();
@@ -25,13 +25,14 @@ export const Captions = ({
   const step = steps.find((s) => ms >= s.startMs && ms < s.endMs);
   if (!step || !step.words.length) return null;
   const local = ms - step.startMs;
-  const chunks = lines ?? chunk(step.words).map((words) => ({ endMs: words.at(-1)!.endMs + LINGER_MS, words }));
-  const ci = chunks.findLastIndex((c) => c.words[0].startMs <= local);
+  const chunks: { startMs?: number; endMs: number; words: Word[] }[] = lines ?? chunk(step.words).map((words) => ({ endMs: words.at(-1)!.endMs + LINGER_MS, words }));
+  const startOf = (c: (typeof chunks)[number]) => c.startMs ?? c.words[0]?.startMs ?? Infinity;
+  const ci = chunks.findLastIndex((c) => startOf(c) <= local);
   if (ci < 0) return null;
   const { words, endMs } = chunks[ci];
-  if (local > endMs) return null;
+  if (local > endMs || !words.length) return null;
 
-  const shownAtFrame = Math.round(((step.startMs + words[0].startMs) / 1000) * fps);
+  const shownAtFrame = Math.round(((step.startMs + startOf(chunks[ci])) / 1000) * fps);
   const pop = spring({ frame: frame - shownAtFrame, fps, config: { damping: 14, stiffness: 220 } });
 
   return (

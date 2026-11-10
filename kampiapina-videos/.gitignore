@@ -9,3 +9,7 @@ projects/*/analysis/sort/
 projects/*/analysis/*.wav
 projects/*/analysis/frames/
 projects/*/analysis/sheets/
+
+# Projects stay local: only the empty folder is in git.
+projects/*
+!projects/.gitkeep

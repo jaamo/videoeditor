@@ -31,3 +31,7 @@ projects/*/analysis/frames/
 projects/*/analysis/sheets/
 projects/*/review/
 projects/*/proxy/
+
+# Projects stay local: only the empty folder is in git.
+projects/*
+!projects/.gitkeep

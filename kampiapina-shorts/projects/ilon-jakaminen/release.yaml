@@ -1,0 +1,16 @@
+# ilon-jakaminen: what goes with the short when it's released (npm run release -- ilon-jakaminen)
+title: "Joojoo tää on vika tämmöne hehkutus"       # YouTube's title, 100 characters at most
+caption: |                                     # Instagram's caption and YouTube's description; for TikTok it's printed, to paste in the app
+  Kilauta ja kiitä. Toimii.
+tags: []  # hashtags at the end of the caption, and YouTube's tags
+youtube:
+  privacy: public        # public | unlisted | private
+  category: 17           # 17 Sports, 22 People & Blogs, 2 Autos & Vehicles, 19 Travel & Events
+  # publishAt: 2026-11-10T17:00:00+02:00   # scheduled: uploaded private, public at that time
+  # title: / description:                  # instead of title / caption, for YouTube only
+instagram:
+  shareToFeed: true      # shown in the feed too, not only under Reels
+  # thumbOffset: 1500    # the cover: the frame at this ms
+  # caption:             # instead of caption, for Instagram only
+# tiktok:
+#   caption:             # instead of caption, for TikTok only

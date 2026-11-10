@@ -1,0 +1,49 @@
+[11.54–12.34] Moikka!
+[12.70–15.62] Täällä mä oon taas hapettamassa koopissa selittämässä, miten meidän tuote...
+[15.52–24.14] Tää on siis työkalu, joka haastattelee meidän käyttäjiä ja tuottaa sen pohjalta sisältöjä esimerkiksi LinkedInin.
+[24.14–33.40] Me on just julkaistu ihan hiljattain tämmönen performance-erityinen analytiikkatoiminto tänne, ja mä näytän vähän, miten se toimii.
+[33.15–34.77] Kiitos.
+[46.82–52.48] Tää toiminta löytyy täältä valikosta, performance-kohdasta, mennään sinne.
+[52.48–60.70] Tässä alussa on mun parhaiten menestyneet postaukset viimeisen kolmen kuukauden ajalta, ja mä voin toki valita jonkin muunkin
+[60.70–61.86] aikajänteen tänne.
+[62.58–69.62] Sit näkyy vähän tämmöstä perustatistiikkaa, miten paljon mä oon postannut, paljonko mun postauksia on reagoitu, paljonko niitä on
+[69.62–71.88] kommentoitu, ja näin edespäin.
+[71.88–82.64] Sit näkyy tämmönen kumulatiivinen kehityskäyrä, ja alhaalla näkyy, paljonko mä oon postannut, ja miten hyvin reagoinnit ja kommentoinnit
+[82.64–83.56] on kehittynyt.
+[83.72–89.74] Täältä käppärää kun katsoo, niin arvatkaa, missä kohtaa on muuten otettu meidän oma työkalu käyttöön, ettei vaan olisi
+[89.74–91.38] täällä tapahtunut.
+[92.24–101.92] Sitten meillä Tästä mä selitän jossain toisella videolla vähän enemmän, mutta me kerätään tällaista ideaalisen asiakkaan profiileja, tai
+[101.92–106.86] siis siihen mätsääviä käyttäjiä, eli ICP-profiilin mätsääviä käyttäjiä.
+[107.88–111.28] Siitä tosiaan joskus vähän myöhemmin näkee pikkasen käppärää,
+[112.26–117.38] että miten usein mä postaan, ja sitten vähän, mistä aiheesta mä oon postannut.
+[118.51–118.65] Kiitos, että katsoitte.
+[119.08–125.98] Täällä on myös tällainen analyysinäkymä, eli sitten analysoidaan niitä mun postauksia, miten ne on menestynyt, minkä tyyppiset sisällöt
+[125.98–128.36] toimii, minkä tyyppiset sisällöt ei toimi.
+[128.29–129.55] Joo totta.
+[130.04–136.06] Tuossa on yleiskuva, ja jos laittaa itsensä niihin peliin, niin se yleensä toimii paremmin.
+[136.06–143.08] Sitten täällä on silleen, että nämä sisällöt on toiminut, tämän tyyppiset sisällöt saa enemmän näyttöjä, sitten tämän tyyppiset
+[143.08–147.18] sisällöt ei saa yhtä hyvin näyttöjä.
+[147.18–158.30] Tämä toimii henkilökohtaisella puolella, mutta sitten myös, jos on tiimipuoli käytössä, mä otan tämän meidän tiimin performansen,
+[159.04–160.80] tämä on mielenkiintoinen.
+[161.70–167.40] Me nähdään vähän samoja juttuja, kuin mitä tuolla henkilökohtaisella puolella, nyt niinku tiimin tasolla, että paljonko meidän tiimi
+[167.40–174.90] on tänne postannut linkkaria, ja miten ihmiset on niihin reagoinut ja muuta, postausten määrä.
+[174.90–183.90] Mutta sitten kaikista tärkein, koska kilpailu motivoi ainakin joitakin ihmisiä, niin sittenhän nähdään myös toplistoja.
+[184.38–192.08] Ja tämähän on koko tiimin vertailu ihmisistä, ja mä en tee tämän videomaan tietysti siksi, että mä voin
+[192.08–195.13] itse olla täällä ykköspaikalla, Kiitos, että katsoitte!
+[195.74–201.58] mutta no ei vitsi vitsi, nähdään paljonko on postattu, paljonko on reagoitu, paljonko on kommentoitu.
+[201.58–203.12] Tässä on tämmönen hauska juttu,
+[204.28–209.78] että Juliuksen postaukset saa selkeästi enemmän kommentointia, kuin meikäläisen.
+[209.96–212.06] No joo, pystyy tämmösiin juttuihin täällä kaivelemaan.
+[212.88–217.10] Ehkä just se, että jos vaikka systemaattisesti LinkedInin tekee, niin tähän sitten näkee,
+[218.54–220.70] että missä me oikeasti mennään.
+[220.70–224.26] Mun mielestä nämä,
+[228.50–232.39] ja sitten täältä pääsee sukeltaan vielä yksityiskohtaisemmin, Täältä.
+[233.06–237.86] yksittäisiinkin postauksiin näkee, miten ne on toiminut ja minkä tyyppi sitten on toiminut näin.
+[239.40–245.00] Mun mielestä nämä näkymät, vaikka niin kuin itse sanonkin, on paremmat kuin LinkedInin omat näkymät, mutta näitä me
+[245.00–246.86] täältä tarjotaan meidän käyttäjille.
+[247.72–248.86] Käyttäjille tuota...
+[260.06–267.66] Mun mielestä nämä, vaikka niin kuin itse sanonkin, nämä näkymät on parempia kuin LinkedInin omat analytiikkanäkymät,
+[268.41–268.55] Kiitos, että katsoitte.
+[268.92–269.86] ja täältä näitä...
+[274.90–281.60] Mun mielestä nämä näkymät, vaikka niin kuin itse sanonkin, on parempia kuin LinkedInin omat analytiikkanäkymät, ja täältä niitä
+[281.60–288.72] Outerviewn uumenista saa, jos kiinnostaa oman tuotteen keuhuminen päättyy tähän.

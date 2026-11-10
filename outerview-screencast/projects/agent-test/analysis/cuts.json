@@ -1,0 +1,50 @@
+{
+ "about": "A first guess at what to keep, in seconds of the main recording: speech without pauses over 1 s, retakes and lone fillers. A starting point, not the plan.",
+ "keep": [
+  [
+   0,
+   43.4
+  ],
+  [
+   49,
+   49.6
+  ],
+  [
+   50.3,
+   54.2
+  ],
+  [
+   54.8,
+   75
+  ],
+  [
+   76,
+   81.4
+  ],
+  [
+   82.2,
+   82.8
+  ],
+  [
+   83.9,
+   84.6
+  ]
+ ],
+ "removed": [
+  {
+   "from": 43.4,
+   "to": 49,
+   "why": "silence"
+  },
+  {
+   "from": 75,
+   "to": 76,
+   "why": "silence"
+  },
+  {
+   "from": 82.8,
+   "to": 83.9,
+   "why": "silence"
+  }
+ ]
+}

@@ -1,0 +1,20 @@
+{
+ "about": "A first guess at what to keep, in seconds of the camera recording: speech without pauses over 1 s, retakes and lone fillers. A starting point, not the plan.",
+ "keep": [
+  [
+   1.5,
+   48.2
+  ],
+  [
+   48.8,
+   50.9
+  ]
+ ],
+ "removed": [
+  {
+   "from": 0,
+   "to": 1.5,
+   "why": "silence"
+  }
+ ]
+}

@@ -1,0 +1,90 @@
+{
+ "about": "Seconds of the main recording; x, y and boxes [x, y, width, height] in the screen recording's pixels. Clicks are the rings npm run clicks draws (none if it wasn't running).",
+ "size": [
+  1920,
+  1080
+ ],
+ "clicks": [],
+ "changes": [
+  {
+   "t": -2,
+   "share": 1
+  },
+  {
+   "t": 44,
+   "share": 0.53
+  },
+  {
+   "t": 45.6,
+   "share": 0.49
+  },
+  {
+   "t": 48.2,
+   "share": 0.52
+  },
+  {
+   "t": 51,
+   "share": 0.99
+  },
+  {
+   "t": 74.4,
+   "share": 1
+  },
+  {
+   "t": 84,
+   "share": 0.75
+  }
+ ],
+ "activity": [
+  {
+   "from": -2.4,
+   "to": 44.4,
+   "box": [
+    60,
+    0,
+    1800,
+    1020
+   ]
+  },
+  {
+   "from": 46,
+   "to": 48.6,
+   "box": [
+    60,
+    120,
+    180,
+    240
+   ]
+  },
+  {
+   "from": 48.8,
+   "to": 51.8,
+   "box": [
+    660,
+    0,
+    1260,
+    840
+   ]
+  },
+  {
+   "from": 74.8,
+   "to": 80.8,
+   "box": [
+    780,
+    240,
+    360,
+    720
+   ]
+  },
+  {
+   "from": 85.4,
+   "to": 86.8,
+   "box": [
+    660,
+    180,
+    540,
+    540
+   ]
+  }
+ ]
+}

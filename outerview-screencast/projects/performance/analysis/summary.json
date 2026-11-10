@@ -1,0 +1,28 @@
+{
+ "main": "face",
+ "durationMs": 291922,
+ "face": {
+  "width": 2160,
+  "height": 3840,
+  "durationMs": 291922,
+  "fps": 29.912078175772777,
+  "hasAudio": true,
+  "file": "/home/jaamo/Documents/videoeditor/master/outerview-screencast/projects/performance/footage/20261109_134930.mp4",
+  "startMs": 0,
+  "synced": "main"
+ },
+ "screen": {
+  "width": 1920,
+  "height": 1080,
+  "durationMs": 323100,
+  "fps": 30,
+  "hasAudio": true,
+  "file": "/home/jaamo/Documents/videoeditor/master/outerview-screencast/projects/performance/footage/2026-11-09 13-49-06.mp4",
+  "startMs": -26100,
+  "synced": "manual"
+ },
+ "inputs": {
+  "20261109_134930.mp4": "1736613064-1794229331513",
+  "2026-11-09 13-49-06.mp4": "21390797-1794225270867"
+ }
+}

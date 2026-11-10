@@ -1,0 +1,50 @@
+# ilon-jakaminen: first cut. Seconds of the camera recording.
+framing: { x: 1550, y: 1280, zoom: 1.25 }
+segments:
+  - from: 1.63
+    to: 6.38
+    framing: { y: 1500 }
+    why: the hook ("Mä oon täällä taas jeesustelemassa"), then the Sunday ride, up to "oli"
+  - from: 7.93
+    to: 16.13
+    why: '"koira silleen" stumble and the pause before it out; the dog walker, slowing down, the thanks'
+  - from: 16.43
+    to: 21.33
+    why: today's story starts; breath before it out
+  - from: 21.58
+    to: 25.22
+    why: rang the bell and thanked him passing by; pause out
+  - from: 25.50
+    to: 26.34
+    why: '"Sitten jäin", the pause after it out'
+  - from: 26.68
+    to: 35.66
+    why: he walked 100 m back to thank him for ringing the bell
+    emphasis:
+      - at: 32.20
+        until: 33.72
+        zoom: 1.15
+        why: '"kiitos kun soitit sitä kelloa": the surprising thanks'
+  - from: 36.90
+    to: 38.25
+    why: the point begins; "Mä sanon vaan, että" lead-in out
+  - from: 38.62
+    to: 39.70
+    why: hesitation before "paljon" out
+  - from: 40.25
+    to: 42.60
+    why: hesitation before "negatiivisuutta" out
+  - from: 43.28
+    to: 43.80
+    why: '"Tämä on", the pause after it out'
+  - from: 44.16
+    to: 47.78
+    why: the message
+    emphasis:
+      - at: 44.18
+        until: 46.70
+        zoom: 1.2
+        why: '"ilmainen tapa saada ihmisille hyvä fiilis": the message in one line'
+  - from: 48.95
+    to: 50.62
+    why: the closer, "Ei voi kuin suositella"; pause before it out

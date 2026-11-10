@@ -1,0 +1,42 @@
+# Seconds of the main recording (the face camera).
+segments:
+  - from: 22.2
+    to: 27.5
+    layout: face
+    why: hello, demoing Outerview
+  - from: 30.05
+    to: 35.75
+    layout: face
+    why: what Outerview is (after a 2.9 s pause)
+  - from: 35.75
+    to: 42.85
+    layout: screen
+    why: the start page, where a new interview starts
+    zooms:
+      - at: 36.8
+        until: 41.6
+        box: [570, 0, 1040, 585]
+        why: the hero card and its start buttons while he says a new interview starts here
+  - from: 49.95
+    to: 54.0
+    layout: screen
+    why: picks "Start with your own topic" (silent Posts detour 42.6-49.9 cut), modal opens
+  - from: 55.4
+    to: 70.25
+    layout: screen
+    why: types the topic as he says it (1.4 s pause before typing cut)
+    zooms:
+      - at: 56.4
+        until: 62.4
+        box: [520, 352, 880, 495]
+        why: the topic being typed into the modal
+  - from: 72.85
+    to: 74.6
+    layout: face
+    why: off to the interview (typo aside 70.4-72.6 cut)
+  - from: 76.5
+    to: 80.7
+    layout: face
+    why: mic check, the close (2 s loading pause cut)
+replace:
+  Suomea: suomea

@@ -67,7 +67,7 @@ cut`, the render and the review are in **seconds of the cut** (= of the video).
 
 ```
 projects/<name>/
-  project.yaml          language (fi), music, musicVolume, grade (0–1), flat (0–1, log-like: lifted blacks, less contrast and colour), replace (caption spelling fixes)
+  project.yaml          language (fi), music, musicVolume, grade (0–1), flat (0–1, log-like: lifted blacks, less contrast and colour), bright (0–1, midtones lifted, default 0.5), replace (caption spelling fixes)
   (anything dropped)    files dropped here are sorted into footage/ by `sort`; skip → unused/
   footage/              the camera recording: one file
     broll/              b-roll clips (and stills), any number

@@ -58,7 +58,8 @@ rendered (the render says which).
   has room for ×2.
 - **Grade**: colours a little washed out, a warm cast, blacks lifted to warm brown,
   highlights held back, a soft vignette and fine grain (`src/remotion/Grade.tsx`).
-  `grade` in `project.yaml` sets how much: 0 off, 1 full (still slight).
+  `grade` in `project.yaml` sets how much: 0 off, 1 full (still slight). `bright` lifts the
+  midtones: 0 off, 0.5 the default, 1 much brighter.
 - **Music**: `music: assets/music/<track>.mp3` in `project.yaml`, ducked under speech.
 
 ## Releasing

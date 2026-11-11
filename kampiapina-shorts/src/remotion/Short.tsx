@@ -17,7 +17,7 @@ export const Short = (m: ShortManifest) => {
   const speaking = m.lines.flatMap((l) => l.words.map((w) => [w.startMs, w.endMs] as const));
   return (
     <AbsoluteFill style={{ background: "#000" }}>
-      <Grade strength={m.grade} flat={m.flat ?? 0}>
+      <Grade strength={m.grade} flat={m.flat ?? 0} bright={m.bright ?? 0}>
         {m.tracks.map((t, i) => (
           <TrackLayer key={i} m={m} t={t} />
         ))}

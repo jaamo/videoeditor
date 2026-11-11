@@ -32,4 +32,6 @@ export type ShortManifest = {
   grade: number;
   /** Flat, log-like: lifted blacks, less contrast and colour. 0 none, 1 very flat. */
   flat?: number;
+  /** Brighter midtones (a gamma lift, whites and blacks stay put). 0 none, 1 much brighter. */
+  bright?: number;
 };

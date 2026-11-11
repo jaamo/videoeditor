@@ -563,10 +563,19 @@ async function instagramUpload(ig: NonNullable<Tokens["instagram"]>, file: strin
   const auth = { authorization: `OAuth ${ig.accessToken}` };
   const container = await api(`${FB}/${ig.userId}/media?upload_type=resumable`, { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify(body) });
   log(`  uploading (${(size / 1e6).toFixed(1)} MB)…`);
-  const up = await api(container.uri ?? `https://rupload.facebook.com/ig-api-upload/v27.0/${container.id}`, {
+  // The upload can answer with an error (400 ProcessingFailedError) although the video got there
+  // and the container goes on to FINISHED: then the container's status decides, not the answer.
+  const upError = await api(container.uri ?? `https://rupload.facebook.com/ig-api-upload/v27.0/${container.id}`, {
     method: "POST", headers: { ...auth, offset: "0", file_size: String(size) }, body: await readFile(file),
-  });
-  if (up.success === false || up.debug_info) throw new Error(`Instagram didn't take the upload: ${JSON.stringify(up.debug_info ?? up)}`);
+  }).then(
+    (up) => (up.success === false || up.debug_info ? JSON.stringify(up.debug_info ?? up) : undefined),
+    (e: Error) => e.message,
+  );
+  if (upError) {
+    const s = await api(`${FB}/${container.id}?fields=status_code,status`, { headers: auth }).catch(() => ({}) as any);
+    if (!s.status_code || s.status_code === "ERROR" || s.status_code === "EXPIRED") throw new Error(`Instagram didn't take the upload: ${upError}`);
+    log(`  the upload answered with an error, but the video is there (${s.status_code}): going on`);
+  }
   const started = Date.now();
   for (;;) {
     await sleep(10_000);

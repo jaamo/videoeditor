@@ -58,7 +58,8 @@ All from the folder `kampiapina-videos/`, `npm run -s video -- <command> <name> 
 | `merge <name>` | `plan.part1.yaml` … `plan.partN.yaml` (a long video planned in parts) into `plan.yaml`, titles from the first and last part |
 | `check <name> [--plan <file>]` | the plan's errors and warnings, and what each segment says (`--plan`: a part of it) |
 | `build <name> [--force]` | the plan as `tmp/build.json` (and the timeline template), and prints the Resolve script to run |
-| `mcp <name> <ingest [--all]\|build\|dump\|still> …` | prints the Python for the Resolve MCP (below); `ingest --all` transcribes the b-roll too, to find talk in it |
+| `broll <name> [--max-len 10] [--gap 4] [--shift 240] [--talk]` | a b-roll pass on the timeline as it is (after `mcp dump`): the usable sections of the second camera (`analysis/broll-sections.json`, or `broll-sections.partN.json` merged) placed on V2 by real time, each where the A-roll shot at the same moment sits in the cut, in the first free slot, in ride order; writes `tmp/broll.json` and lists it. Stretches already on V2, the first 3 s, the main title's gap and the end are left alone; sections over `--max-len` s are cut to it; `--talk` keeps sections where the user talks to the camera |
+| `mcp <name> <ingest [--all]\|build\|dump\|still\|broll> …` | prints the Python for the Resolve MCP (below); `ingest --all` transcribes the b-roll too, to find talk in it |
 
 ## Resolve, through the MCP
 
@@ -76,6 +77,7 @@ named in `project.yaml` if another is open.
 | `build` | the timeline from `tmp/build.json` (after `build <name>`). Refuses to replace a timeline of that name without `force` |
 | `dump` | the timeline as it is now, to `tmp/timeline.json` (every item: where, which frames of which file, group, zoom) |
 | `still <seconds>` | a frame of the cut as Resolve shows it, to `analysis/frames/cut-<s>.png` |
+| `broll` | appends `tmp/broll.json` (from `broll <name>`) on video track 2: picture only, turned as planned, in the camera's colour group; nothing else is touched. Writes `tmp/broll.result.json` as it goes |
 
 ## Time
 
@@ -100,6 +102,7 @@ projects/<name>/
     sheets/             contact sheets of every file; index.txt gives each tile's time
     frames/             frames from the frame command, and cut-<s>.png from still
     findings.md         the analyzer's notes (it returns them, the skill saves them)
+    broll-sections.json / broll-sections.partN.json   every usable section of the b-roll, for a b-roll pass: [{ file, from, to, rotation, what, talk? }] in seconds of the file; rotation 0 / 90 / -90 / 180 is what the picture needs to stand upright; talk marks the user talking to that camera
   plan.yaml             the first cut
   tmp/                  build.json, timeline.fcpxml, timeline.json
 ```
@@ -195,6 +198,11 @@ Learned on `tekoaly-ja-politiikka` (a chest cam + a hand-held ride cam, 97 clips
   writes `plan.partN.yaml` (every segment with `file:`), checks it with `check --plan`,
   and does not build; the first part sets `titles.main`, the last `titles.end`, both as
   `{ file, at }`. Then `merge`, `check`, `build` once, `dump`, stills.
+- **A b-roll pass later**: once the user has cut the A-roll by hand, b-roll is added without
+  touching V1: `mcp dump` (the timeline as it is), the analyzer lists every usable section of
+  the second camera with its rotation (`broll-sections.json`, in parts for many files), then
+  `broll` places them on V2 by real time and `mcp broll` appends them. Run it again after
+  more sections are found: what's on V2 already is skipped.
 - **Wind**: on a bike the voice track never goes quiet, so `silences.json` is empty and
   `check` warns "voice is loud" at every cut: cut by the word times and accept those
   warnings; the face stretches (camera near the mouth) do have real quiet.

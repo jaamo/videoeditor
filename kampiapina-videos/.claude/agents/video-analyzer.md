@@ -32,6 +32,16 @@ You're given the project's name. Work from the folder `kampiapina-videos/`.
    weren't asked to redo it, stop: report that it's done before (and return no findings).
    Asked for one PART of a long video: steps 0–3 are done by the caller; analyze only
    your files and return your part's findings under its own heading.
+   Asked for the B-ROLL SECTIONS of some files (a b-roll pass on an edited timeline): look at
+   every contact sheet of those files (and `frame` where a tile is unclear or to settle a
+   rotation) and write every usable section at least 2 s long, split where the picture or its
+   orientation changes, as a JSON array to the file the caller names
+   (`analysis/broll-sections.partN.json`): `{ "file", "from", "to", "rotation", "what", "talk"? }`
+   in seconds of the file; `rotation` is what the picture needs to stand upright (180 when the
+   sky or treetops are at the bottom or the road at the top; 90 when the top of the scene
+   points to the right of the frame, -90 to the left); `talk: true` where the user speaks to
+   that camera. Be generous: the ride cam's angles are deliberate (reference.md); unusable is
+   only a covered lens, a blur or a swing, black. Report one line per file.
 4. Read `analysis/summary.json`, each `<stem>.transcript.txt` and `<stem>.cuts.json`, and
    `analysis/sheets/index.txt`, and look at every contact sheet. Look closer with `frame`
    where you need to.

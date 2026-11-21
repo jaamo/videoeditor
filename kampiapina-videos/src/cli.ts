@@ -7,8 +7,9 @@
 //   npm run video -- sync <name> [<b-roll file> …]   two cameras: the clock offset between them from the sound, and which b-roll clips have talk the A-roll doesn't
 //   npm run video -- merge <name>               plan.part1.yaml … plan.partN.yaml (a long video planned in parts) into plan.yaml
 //   npm run video -- check <name> [--plan <file>]   the plan's problems (--plan: another file than plan.yaml, e.g. a part of it)
+//   npm run video -- broll <name> [--max-len 10] [--gap 4] [--shift 240]   a b-roll pass on the timeline as it is (after mcp dump): the usable sections of analysis/broll-sections*.json placed on V2 by real time, as tmp/broll.json
 //   npm run video -- build <name> [--force]     the plan as tmp/build.json, and the Resolve script to run
-//   npm run video -- mcp <name> <ingest [--all]|build|dump|still> [args…]   the Python to run through the Resolve MCP (--all: the b-roll transcribed too)
+//   npm run video -- mcp <name> <ingest [--all]|build|dump|still|broll> [args…]   the Python to run through the Resolve MCP (--all: the b-roll transcribed too; broll: append tmp/broll.json on V2)
 // Times are seconds of the A-roll file, except where they're of the cut.
 import { existsSync, readFileSync } from "node:fs";
 import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -17,6 +18,7 @@ import YAML from "yaml";
 import { roughCut } from "./lib/rough-cut.ts";
 import { contactSheets, ffReport, fingerprint, levels, probe, shotAt, still } from "./lib/media.ts";
 import { corrNear, ENVELOPE_STEP, envelope, topLags, wordsMatch } from "./lib/sync.ts";
+import { placeBroll, type BrollSection, type Dump } from "./lib/broll.ts";
 import { makeVoice } from "./lib/voice.ts";
 import {
   arollOf, buildOf, checkPlan, clock, clockOffsetMs, emptyFcpxml, offsetMs, footageFiles, GROUPS, localIso, LOUD_AT_CUT_DB, MAIN_TITLE, MUSIC, musicFile, paths, readJson, readYaml, seconds, segmentAt, stemOf, transcriptText, W, H,
@@ -26,7 +28,7 @@ import type { Word } from "./types.ts";
 
 const [cmd, name, ...rest] = process.argv.slice(2);
 if (!cmd || !name || !/^[\p{Ll}\p{N}][\p{Ll}\p{N}-]*$/u.test(name)) {
-  console.error("Usage: npm run video -- <init|sort|analyze|frame|level|sync|merge|check|build|mcp> <name> …  (name: lowercase letters, digits, dashes)");
+  console.error("Usage: npm run video -- <init|sort|analyze|frame|level|sync|merge|check|build|broll|mcp> <name> …  (name: lowercase letters, digits, dashes)");
   process.exit(2);
 }
 const p = paths(name);
@@ -35,7 +37,7 @@ const rel = (f: string) => path.relative(process.cwd(), f);
 const s1 = (ms: number) => Math.round(ms / 100) / 10;
 const HERE = path.resolve("src", "resolve");
 
-const commands: Record<string, () => Promise<void>> = { init, sort, analyze, frame, level, sync, merge, check, build, mcp };
+const commands: Record<string, () => Promise<void>> = { init, sort, analyze, frame, level, sync, merge, check, build, broll, mcp };
 if (!commands[cmd]) throw new Error(`Unknown command ${cmd}`);
 if (cmd !== "init" && !existsSync(p.settings)) throw new Error(`No project ${rel(p.dir)}: npm run video -- init ${name} <source folder>`);
 await commands[cmd]();
@@ -465,6 +467,33 @@ async function build() {
   log(bootstrap("build", { build: p.build, force: rest.includes("--force") }));
 }
 
+// --- broll -----------------------------------------------------------------------------
+
+/**
+ * A b-roll pass on the timeline as it is now (`mcp dump` first): every usable section of the
+ * second camera (analysis/broll-sections.json, or broll-sections.part*.json merged) goes on V2
+ * where the A-roll shot at the same real moment sits in the cut, in the first free slot, in
+ * ride order; nothing on V1 moves. Writes tmp/broll.json for `mcp <name> broll`.
+ */
+async function broll() {
+  const num = (flag: string, dflt: number) => (rest.indexOf(flag) >= 0 ? Number(rest[rest.indexOf(flag) + 1]) : dflt);
+  const summary = await readJson<Summary>(p.summary);
+  const dumpFile = path.join(p.tmp, "timeline.json");
+  if (!existsSync(dumpFile)) throw new Error(`No ${rel(dumpFile)}: run npm run video -- mcp ${name} dump first (the timeline as it is now)`);
+  const dump = await readJson<Dump>(dumpFile);
+  const files = [path.join(p.analysis, "broll-sections.json"), ...(await readdir(p.analysis)).filter((f) => /^broll-sections\.part\d+\.json$/.test(f)).sort().map((f) => path.join(p.analysis, f))].filter((f) => existsSync(f));
+  if (!files.length) throw new Error(`No ${rel(path.join(p.analysis, "broll-sections.json"))} (or broll-sections.partN.json): the analyzer lists the usable sections of the b-roll first`);
+  const sections: BrollSection[] = [];
+  for (const f of files) sections.push(...(await readJson<BrollSection[]>(f)));
+  const { placed, skipped, cutEndS } = placeBroll(dump, summary, sections, { maxLen: num("--max-len", 10), gap: num("--gap", 4), maxShift: num("--shift", 240), keepTalk: rest.includes("--talk") });
+  const groupOf = (key: string) => (summary.broll[key] ?? summary.aroll[key])?.group;
+  await mkdir(p.tmp, { recursive: true });
+  await writeFile(path.join(p.tmp, "broll.json"), JSON.stringify({ project: (await loadSettings()).resolve?.project ?? name, items: placed.map((x) => ({ ...x, ...(groupOf(x.key) ? { group: groupOf(x.key) } : {}) })) }, null, 1));
+  log(`${sections.length} sections, ${placed.length} to place (${clock(placed.reduce((n, x) => n + x.lenS, 0) * 1000)}), ${skipped.length} skipped; the cut is ${clock(cutEndS * 1000)} with ${(dump.tracks[Object.keys(dump.tracks).find((k) => k.startsWith("video 2 ")) ?? ""] ?? []).length} inserts on V2 already`);
+  for (const x of placed) log(`  ${clock(x.atS * 1000).padStart(7)}  ${x.key} ${(x.inF / (summary.broll[x.key] ?? summary.aroll[x.key]).fps).toFixed(1)}–${(x.outF / (summary.broll[x.key] ?? summary.aroll[x.key]).fps).toFixed(1)} s  rot ${String(x.rotation).padStart(4)}  shift ${String(x.shiftS).padStart(6)} s  ${x.what}`);
+  for (const s of skipped) log(`  skipped ${s.file} ${s.from}–${s.to}: ${s.why}`);
+  if (placed.length) log(`\nNow: npm run -s video -- mcp ${name} broll  (and run its Python through the Resolve MCP)`);
+}
 // --- mcp -------------------------------------------------------------------------------
 
 /** The Python to give the Resolve MCP: a script of src/resolve/, with its arguments. */
@@ -502,6 +531,12 @@ async function mcp() {
       await mkdir(p.tmp, { recursive: true });
       log(bootstrap("dump", { project, timeline, out: path.join(p.tmp, "timeline.json") }));
       return;
+    case "broll": {
+      const items = path.join(p.tmp, "broll.json");
+      if (!existsSync(items)) throw new Error(`No ${rel(items)}: npm run video -- broll ${name}`);
+      log(bootstrap("broll", { project, timeline, items }));
+      return;
+    }
     case "still": {
       const [at] = args;
       if (at === undefined) throw new Error("Usage: npm run video -- mcp <name> still <seconds of the cut>");
@@ -510,7 +545,7 @@ async function mcp() {
       return;
     }
     default:
-      throw new Error("Usage: npm run video -- mcp <name> <ingest|build|dump|still> …");
+      throw new Error("Usage: npm run video -- mcp <name> <ingest|build|dump|still|broll> …");
   }
 }
 

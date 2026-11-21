@@ -52,6 +52,18 @@ header with what holds for every part, then the parts), and one planner per part
 `plan.partN.yaml`. Then `merge`, `check`, `build`, `dump` and stills yourself, and report
 as in step 3.
 
+## A b-roll pass on an edited timeline
+
+When the user has cut the A-roll by hand and wants (more) b-roll ("the b-roll is missing",
+"place the rest of the b-roll"): never rebuild. Run `npm run -s video -- mcp <name> dump`
+through the Resolve MCP (the timeline as it is now), then the **video-analyzer** in its
+b-roll-sections mode, one agent per 10–15 b-roll files in parallel, each writing
+`analysis/broll-sections.partN.json` (every usable section with the rotation it needs; the
+ride cam's angles are deliberate, see reference.md). Then `npm run -s video -- broll <name>`
+(the placement on V2 by real time, listed), `npm run -s video -- mcp <name> broll` through
+the MCP, and a `dump` again to confirm the count and that V1 is unchanged. Tell the user
+how many inserts went where (per ten minutes), how many are turned, and what to look at.
+
 ## Re-edits
 
 A change before the user has touched the timeline ("keep the second take", "move that

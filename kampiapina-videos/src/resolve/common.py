@@ -61,7 +61,7 @@ def item_dump(it):
     return {
         "name": it.GetName(), "type": it.GetType(), "start": it.GetStart(), "end": it.GetEnd(), "duration": it.GetDuration(),
         "srcStart": it.GetSourceStartFrame(), "srcEnd": it.GetSourceEndFrame(), "media": mpi.GetName() if mpi else None,
-        "group": g.GetName() if g else None, "zoom": props.get("ZoomX"), "volumeDb": props.get("AudioVolume"), "enabled": it.GetClipEnabled(),
+        "group": g.GetName() if g else None, "zoom": props.get("ZoomX"), "rotation": props.get("RotationAngle"), "volumeDb": props.get("AudioVolume"), "enabled": it.GetClipEnabled(),
     }
 
 def timeline_dump(tl):

@@ -15,8 +15,14 @@ from the folder `kampiapina-videos/`.
    exact word times at every cut point.
 2. If `plan.yaml` exists and you were asked to change it, start from it: change what's
    asked, no more.
+   Asked for one PART of a long video: write `plan.partN.yaml` instead, every segment
+   with `file:`, in real-time order; check it with `check <name> --plan plan.partN.yaml`;
+   set only the title your part holds (`{ file, at }`); don't build (the caller merges and
+   builds once). Whatever the user's wish about keeping the talk, the tightness rules
+   hold: pauses over ~0.3 s, fillers, stumbles and retakes go; content stays.
 3. Write `plan.yaml`: the talk in order, tight, following the editing rules: every join
-   hidden by b-roll or a punch-in (alternate zoom 1 and 1.18), inserts where the words are
+   hidden by b-roll or a punch-in (alternate zoom 1 and 1.24 on a wide talking-head shot,
+   1 and 1.18 on POV), inserts where the words are
    about what they show. Give every segment and insert a short `why`. Set `titles.main`
    (the pause after the intro has said what the video is about: the talk stops there for
    the main title) and `titles.end` (where the sign-off starts: the end title plays over

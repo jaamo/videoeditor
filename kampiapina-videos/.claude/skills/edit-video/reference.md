@@ -15,8 +15,9 @@ in DaVinci Resolve. The agents make the first cut; the user finishes it in Resol
 - **Rough cut**: the A-roll in its recorded order, with pauses, retakes, false starts,
   fillers and asides taken out.
 - **Jump cuts**: two pieces of the same shot joined jump. A join is hidden by b-roll over
-  it, or by a **punch-in** (the piece after the join zoomed ×1.18, like a second, closer
-  camera), alternating wide and close along the cut.
+  it, or by a **punch-in** (the piece after the join zoomed, like a second, closer camera:
+  ×1.24 on a wide talking-head shot, ×1.18 on a POV or chest-cam shot), alternating wide
+  and close along the cut.
 - **Colour groups**: every clip goes into its camera's group of the Resolve project
   (Lumix, DJI, GoPro), read from the file's metadata; the groups carry the colour
   transform. The project is made from the Kampiapina template, which has them.
@@ -50,11 +51,16 @@ All from the folder `kampiapina-videos/`, `npm run -s video -- <command> <name> 
 | `analyze <name> [--force]` | per A-roll file: the mastered voice, silences, the transcript as text, a first guess at the cut; contact sheets of every file; `summary.json`. Skips what's done. Needs the transcript from `mcp ingest` for the text and the guess |
 | `frame <name> <file> <seconds> [x,y,w,h]` | one frame of a footage file (`file` as in summary.json), at its own size, with the box drawn |
 | `level <name> <from> <to> [file]` | the voice's loudness (dBFS) every 50 ms, at most 30 s: where a word really starts and ends. Speech is about -20, quiet under -45; a cut where it's over -38 is heard |
-| `check <name>` | the plan's errors and warnings, and what each segment says |
+| `sync <name> [<b-roll file> …] [--at <offset>] [--any]` | two cameras: the clock offset between them from the sound (each b-roll clip against the other camera's A-roll, looked for within 90 min of the two cameras' first files, `--any`: anywhere; `--at`: score a given offset too). Prints the candidate offsets with their evidence (which clip pairs correlate); confirm the best one with a sentence both cameras caught or a frame of each at the same moment, then put it in `project.yaml`'s `clocks` and `analyze` again. With `clocks` set, says per b-roll clip whether the A-roll was rolling then (a second angle) or not (talk only it has: sort it `aroll`) |
+| `merge <name>` | `plan.part1.yaml` … `plan.partN.yaml` (a long video planned in parts) into `plan.yaml`, titles from the first and last part |
+| `check <name> [--plan <file>]` | the plan's errors and warnings, and what each segment says (`--plan`: a part of it) |
 | `build <name> [--force]` | the plan as `tmp/build.json` (and the timeline template), and prints the Resolve script to run |
-| `mcp <name> <ingest\|build\|dump\|still> …` | prints the Python for the Resolve MCP (below) |
+| `mcp <name> <ingest [--all]\|build\|dump\|still> …` | prints the Python for the Resolve MCP (below); `ingest --all` transcribes the b-roll too, to find talk in it |
 
 ## Resolve, through the MCP
+
+What the API does and doesn't do (frame rates, frames, transcription, rotation tags, the
+MCP's timeout) is in [resolve.md](resolve.md): read it before changing a script.
 
 The scripts in `src/resolve/` run inside Resolve: `npm run -s video -- mcp <name> <script>`
 prints a few lines of Python, which go to the `mcp__DaVinci_Resolve__run_script_unsafe`
@@ -78,9 +84,10 @@ insert's `from` and `frame <b-roll file>` are in seconds of that file. `check`'s
 
 ```
 projects/<name>/
-  project.yaml          source, resolve {project, timeline}, language, music, musicDb, titles, roles
+  project.yaml          source, resolve {project, timeline}, language, music, musicDb, titles, roles, clocks
   analysis/
-    summary.json        the timeline's fps, every A-roll and b-roll file (size, fps, length, camera, group)
+    summary.json        the timeline's fps, every A-roll and b-roll file (size, fps, length, camera, group, shotAt/realAt)
+    chronology.txt      every clip in real time (the cameras' clocks corrected by project.yaml's clocks), with length and words
     <stem>.voice.wav    the A-roll's voice, mastered (analysis only: Resolve plays the camera's sound)
     <stem>.transcript.json   every word: { text, startMs, endMs } (from Resolve, via mcp ingest)
     <stem>.transcript.txt    the same as phrases: [start–end] text, in seconds
@@ -102,7 +109,8 @@ segments:                 # played in this order, one after another
     to: 16.85
     why: the opening
     file: P1004769.MOV    # only when there's more than one A-roll file
-    zoom: 1.18            # a punch-in; 1 (default) as shot. Alternate across uncovered joins
+    zoom: 1.18            # a punch-in (1.24 on a wide talking-head shot); 1 (default) as shot. Alternate across uncovered joins
+    rotation: 180         # when this stretch is upside down (a chest cam's file tagged 180°, taken in the hand and turned to the face); inserts take it too
     inserts:
       - file: P1004770.MOV   # a b-roll file, as in summary.json
         at: 13.0          # A-roll seconds: seen while this is said
@@ -112,22 +120,26 @@ segments:                 # played in this order, one after another
 titles:                   # seconds of the A-roll, inside a segment
   main: 20.94             # the pause after the intro has said what the video is about: the talk stops here for the main title
   end: 941.60             # where the sign-off starts: the end title plays over it
+  # with several A-roll files, say which:  end: { file: P1004771.MOV, at: 941.60 }
 ```
 
 ## Editing rules
 
 - **Order as recorded.** It's a talk: no reordering, no hook moved to the front. Cut
   out, don't rearrange.
-- **Tight, but a talk**: pauses over ~0.5 s out, retakes (keep the last, best take), false
-  starts, fillers (öö, ää, niinku on its own), slips, asides, anything said to someone
-  else, the clap or slate at the start. A breath between sentences stays.
+- **Tight, but a talk**: pauses over ~0.3 s out, retakes (keep the last, best take), false
+  starts and restart words, fillers (öö, ää, niinku on its own, "niin sanotusti"), slips,
+  asides, anything said to someone else, the clap or slate at the start, mic checks. A
+  breath between sentences stays. This tightness is always wanted: a wish like "keep most
+  of the talking, only cut the duplicates" is about the content (asides, rants, ride
+  chatter stay for the user to decide), never a reason to leave pauses, fillers or stumbles in.
 - **Cut in the quiet**: find each cut from the words' times (`transcript.json`), then put it
   in the quiet before the first sound and after the last, by the voice itself
   (`silences.json`, or `level` around the edge). Leave ~0.05 s before the sound and ~0.15 s
   after. `check` warns about every cut where the voice is loud: none should be left.
 - **Hide every join**: where two A-roll pieces meet with no b-roll over the join, the
-  piece after it gets a different zoom from the piece before: wide (1), punched in (1.18),
-  wide, … `check` warns about a join left as a jump. A piece keeps one zoom; don't flip
+  piece after it gets a different zoom from the piece before: wide (1), punched in (1.24
+  on a wide talking-head shot, 1.18 on POV), wide, … `check` warns about a join left as a jump. A piece keeps one zoom; don't flip
   zoom inside a sentence for no reason. The first piece is wide.
 - **Inserts**: where the words are about something the b-roll shows, while it's talked
   about, 2–8 s each; and over joins, which they hide. Pick the stretch of the b-roll that
@@ -145,6 +157,34 @@ titles:                   # seconds of the A-roll, inside a segment
   "moro", "nähdään ensi videolla"…), plays over it, and runs 12 s, past the last word. So
   the sign-off should be 4–10 s of talk. Without `titles.end`, it starts 8 s before the
   end.
+
+## Several A-roll files, two cameras, a long ride
+
+Learned on `tekoaly-ja-politiikka` (a chest cam + a hand-held ride cam, 97 clips, 2 h 50 min):
+
+- **Roles**: a b-roll camera's clip in which the user talks to that camera (words the A-roll
+  doesn't have) is A-roll (`aroll`), placed at its real time among the other files. Find
+  them by transcribing everything (`mcp <name> ingest --all`) and running `sync`: a b-roll
+  clip with the same words as the A-roll is a second angle, b-roll.
+- **Clocks**: the cameras' clocks can disagree (a chest cam ran 14 h 23 min ahead). `sync`
+  finds the offset from the sound and says which b-roll clips have talk the A-roll
+  doesn't; confirm the offset with a sentence both cameras caught or a frame of each at
+  the same moment, put it in `project.yaml` (`clocks: [{ match: "1920x1080", offset:
+  "+14:23:00" }]`), and `analyze` writes every clip in real time to
+  `analysis/chronology.txt` (also `shotAt`/`realAt` in summary.json).
+- **Rotation**: Resolve applies a file's 180° tag (a chest cam worn upside down shows its
+  POV upright) but not a ±90° one (`rotationFor()` turns those). Inside a 180°-tagged file
+  the stretches where the camera is taken in the hand and turned to the face come out
+  upside down or sideways: each such segment gets `rotation: 180` (or 90 / -90, by which
+  way the head points in a `frame`).
+- **Parts**: over about 30 min of A-roll, split the files into chronological parts of
+  25–40 min and run one analyzer and one planner per part in parallel. Each planner
+  writes `plan.partN.yaml` (every segment with `file:`), checks it with `check --plan`,
+  and does not build; the first part sets `titles.main`, the last `titles.end`, both as
+  `{ file, at }`. Then `merge`, `check`, `build` once, `dump`, stills.
+- **Wind**: on a bike the voice track never goes quiet, so `silences.json` is empty and
+  `check` warns "voice is loud" at every cut: cut by the word times and accept those
+  warnings; the face stretches (camera near the mouth) do have real quiet.
 
 ## The Resolve timeline
 

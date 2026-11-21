@@ -4,26 +4,29 @@
 //   npm run video -- analyze <name> [--force]   voice, silences, the transcript as text, a first guess, contact sheets
 //   npm run video -- frame <name> <file> <seconds> [x,y,w,h]
 //   npm run video -- level <name> <from> <to> [file]   the voice's loudness, to cut in the quiet
-//   npm run video -- check <name>               the plan's problems
+//   npm run video -- sync <name> [<b-roll file> …]   two cameras: the clock offset between them from the sound, and which b-roll clips have talk the A-roll doesn't
+//   npm run video -- merge <name>               plan.part1.yaml … plan.partN.yaml (a long video planned in parts) into plan.yaml
+//   npm run video -- check <name> [--plan <file>]   the plan's problems (--plan: another file than plan.yaml, e.g. a part of it)
 //   npm run video -- build <name> [--force]     the plan as tmp/build.json, and the Resolve script to run
-//   npm run video -- mcp <name> <ingest|build|dump|still> [args…]   the Python to run through the Resolve MCP
+//   npm run video -- mcp <name> <ingest [--all]|build|dump|still> [args…]   the Python to run through the Resolve MCP (--all: the b-roll transcribed too)
 // Times are seconds of the A-roll file, except where they're of the cut.
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import YAML from "yaml";
 import { roughCut } from "./lib/rough-cut.ts";
-import { contactSheets, ffReport, fingerprint, levels, probe, still } from "./lib/media.ts";
+import { contactSheets, ffReport, fingerprint, levels, probe, shotAt, still } from "./lib/media.ts";
+import { corrNear, ENVELOPE_STEP, envelope, topLags, wordsMatch } from "./lib/sync.ts";
 import { makeVoice } from "./lib/voice.ts";
 import {
-  arollOf, buildOf, checkPlan, clock, emptyFcpxml, footageFiles, GROUPS, LOUD_AT_CUT_DB, MAIN_TITLE, MUSIC, musicFile, paths, readJson, readYaml, seconds, segmentAt, stemOf, transcriptText, W, H,
-  type Plan, type Role, type Settings, type Source, type Summary, type Time,
+  arollOf, buildOf, checkPlan, clock, clockOffsetMs, emptyFcpxml, offsetMs, footageFiles, GROUPS, localIso, LOUD_AT_CUT_DB, MAIN_TITLE, MUSIC, musicFile, paths, readJson, readYaml, seconds, segmentAt, stemOf, transcriptText, W, H,
+  type Plan, type Role, type Settings, type Source, type Summary, type Time, type TitleAt,
 } from "./project.ts";
 import type { Word } from "./types.ts";
 
 const [cmd, name, ...rest] = process.argv.slice(2);
 if (!cmd || !name || !/^[\p{Ll}\p{N}][\p{Ll}\p{N}-]*$/u.test(name)) {
-  console.error("Usage: npm run video -- <init|sort|analyze|frame|level|check|build|mcp> <name> …  (name: lowercase letters, digits, dashes)");
+  console.error("Usage: npm run video -- <init|sort|analyze|frame|level|sync|merge|check|build|mcp> <name> …  (name: lowercase letters, digits, dashes)");
   process.exit(2);
 }
 const p = paths(name);
@@ -32,7 +35,7 @@ const rel = (f: string) => path.relative(process.cwd(), f);
 const s1 = (ms: number) => Math.round(ms / 100) / 10;
 const HERE = path.resolve("src", "resolve");
 
-const commands: Record<string, () => Promise<void>> = { init, sort, analyze, frame, level, check, build, mcp };
+const commands: Record<string, () => Promise<void>> = { init, sort, analyze, frame, level, sync, merge, check, build, mcp };
 if (!commands[cmd]) throw new Error(`Unknown command ${cmd}`);
 if (cmd !== "init" && !existsSync(p.settings)) throw new Error(`No project ${rel(p.dir)}: npm run video -- init ${name} <source folder>`);
 await commands[cmd]();
@@ -49,7 +52,7 @@ async function init() {
   const music = (await readdir(source)).filter((f) => MUSIC.test(f)).sort()[0];
   const settings: Settings = { source: path.resolve(source), resolve: { project, timeline: name }, language: "fi", ...(music ? { music } : {}) };
   await writeFile(p.settings, `# ${name}: settings of the video (see /edit-video)\n${YAML.stringify(settings)}` +
-    "# musicDb: -18            # the music's level under the voice\n# titles: { main: \"Main title 2026 (merged)\", social: false }   # another composition than the template's, or false to leave one out\n");
+    "# musicDb: -18            # the music's level under the voice\n# titles: { main: \"Main title 2026 (merged)\", social: false }   # another composition than the template's, or false to leave one out\n# clocks: [{ match: \"1920x1080\", offset: \"+14:23:00\" }]   # a camera whose clock is off (npm run video -- sync finds it)\n");
   log(`${rel(p.settings)}: footage from ${source}${music ? `, music ${music}` : ", no music found there"}; Resolve project "${project}"`);
   log(`Then: npm run -s video -- sort ${name}`);
 }
@@ -111,7 +114,13 @@ async function analyze() {
   if (unsorted.length) throw new Error(`Not sorted yet: ${unsorted.map((f) => f.key).join(", ")}. First: npm run -s video -- sort ${name}`);
   const sources = files.filter((f) => f.role !== "skip").map((f): Source => {
     const r = probe(f.file);
-    return { ...r, file: f.file, key: f.key, role: f.role as "aroll" | "broll", ...(r.camera ? { group: GROUPS[r.camera] } : {}) };
+    const src: Source = { ...r, file: f.file, key: f.key, role: f.role as "aroll" | "broll", ...(r.camera ? { group: GROUPS[r.camera] } : {}) };
+    const shot = shotAt(f.file);
+    if (shot) {
+      src.shotAt = localIso(shot);
+      src.realAt = localIso(new Date(shot.getTime() - clockOffsetMs(settings, src)));
+    }
+    return src;
   });
   const aroll = Object.fromEntries(sources.filter((s) => s.role === "aroll").map((s) => [s.key, s]));
   const broll = Object.fromEntries(sources.filter((s) => s.role === "broll").map((s) => [s.key, s]));
@@ -126,7 +135,10 @@ async function analyze() {
     await rm(p.analysis, { recursive: true, force: true });
   }
   for (const d of [p.analysis, p.sheets, p.frames, p.tmp]) await mkdir(d, { recursive: true });
-  const fps = Math.round(mains[0].fps * 1000) / 1000;
+  // The timeline's rate: the one most of the A-roll is shot at (a second camera's talk may run at another).
+  const secondsAt = new Map<number, number>();
+  for (const m of mains) secondsAt.set(m.fps, (secondsAt.get(m.fps) ?? 0) + m.durationMs);
+  const fps = Math.round([...secondsAt.entries()].sort((a, b) => b[1] - a[1])[0][0] * 1000) / 1000;
   const summary: Summary = { fps, width: W, height: H, aroll, broll, inputs };
   await writeFile(p.summary, JSON.stringify(summary, null, 2));
   const music = musicFile(settings);
@@ -174,8 +186,24 @@ async function analyze() {
   }
   if (index.length) await writeFile(indexFile, `Seconds of each file's own time.\n${index.join("\n")}\n`);
 
+  // Every clip in real time (the cameras' clocks corrected by project.yaml's clocks): the order of the shoot.
+  const rows = sources.map((s) => {
+    const words = existsSync(p.transcript(stemOf(s.key))) ? (JSON.parse(readFileSync(p.transcript(stemOf(s.key)), "utf8")) as Word[]).length : undefined;
+    return { s, words };
+  }).sort((a, b) => (a.s.realAt ?? "").localeCompare(b.s.realAt ?? "") || a.s.key.localeCompare(b.s.key));
+  const hm = (iso?: string) => (iso ? iso.slice(11, 19) : "?");
+  const endOf = (s: Source) => (s.realAt ? localIso(new Date(new Date(s.realAt).getTime() + s.durationMs)) : undefined);
+  const clocksNote = (settings.clocks ?? []).map((c) => `${c.match}: clock = real ${String(c.offset).startsWith("-") ? "" : "+ "}${c.offset}`).join("; ");
+  await writeFile(path.join(p.analysis, "chronology.txt"), [
+    `Every clip in real time${clocksNote ? ` (${clocksNote})` : ""}; a file's own clock in shotAt of summary.json. Length in s, words transcribed.`,
+    `${"real start".padEnd(10)} ${"real end".padEnd(8)} ${"file".padEnd(30)} ${"role".padEnd(6)} ${"camera".padEnd(8)} ${"size".padEnd(14)} ${"s".padStart(6)} ${"words".padStart(5)}`,
+    ...rows.map(({ s, words }) => `${hm(s.realAt).padEnd(10)} ${hm(endOf(s)).padEnd(8)} ${s.key.padEnd(30)} ${s.role.padEnd(6)} ${(s.camera ?? "?").padEnd(8)} ${`${s.width}x${s.height}@${Math.round(s.fps * 100) / 100}`.padEnd(14)} ${(s.durationMs / 1000).toFixed(0).padStart(6)} ${words === undefined ? "    -" : String(words).padStart(5)}`),
+    "",
+  ].join("\n"));
+
   log(`\n${rel(p.analysis)}/`);
   for (const f of (await readdir(p.analysis)).sort()) log(`  ${f}`);
+  log(`  chronology.txt: every clip in real time${settings.clocks?.length ? "" : " (no clocks in project.yaml: the cameras' own clocks; npm run video -- sync checks them)"}`);
   for (const m of mains) log(`A-roll: ${m.key}, ${m.width}×${m.height} ${m.fps.toFixed(3)} fps, ${clock(m.durationMs)}, camera ${m.camera ?? "unknown"} (the timeline is ${fps} fps)`);
   log(`b-roll: ${Object.values(broll).map((b) => `${b.key} (${clock(b.durationMs)}, ${b.camera ?? "unknown camera"})`).join(", ") || "none"}`);
   if (missing.length) log(`\nNO TRANSCRIPT yet for ${missing.join(", ")}: run the ingest script in Resolve (npm run -s video -- mcp ${name} ingest), then analyze again`);
@@ -217,6 +245,177 @@ async function level() {
   }
 }
 
+// --- sync ------------------------------------------------------------------------------
+
+/**
+ * Two cameras: for each b-roll clip (or the ones named), where its sound fits in the A-roll of the
+ * other camera, the clock offset that implies, and whether its words are in the A-roll (a second
+ * angle) or not (talk only this clip has: A-roll material).
+ */
+async function sync() {
+  const settings = await loadSettings();
+  if (!existsSync(p.summary)) throw new Error(`No ${rel(p.summary)}: npm run video -- analyze ${name} first`);
+  const summary = await readJson<Summary>(p.summary);
+  const named = rest.filter((a, i) => !a.startsWith("--") && rest[i - 1] !== "--at");
+  const all = { ...summary.aroll, ...summary.broll };
+  const targets = named.length ? named.map((n) => all[n] ?? all[path.basename(n)]).filter(Boolean) : Object.values(summary.broll);
+  if (!targets.length) throw new Error(`Nothing to sync: name b-roll files, or sort some first (${Object.keys(all).join(", ")})`);
+  const sig = (s: Source) => `${s.width}x${s.height}@${Math.round(s.fps * 100) / 100}`;
+  const arolls = Object.values(summary.aroll).filter((a) => shotAt(a.file));
+  const envs = new Map<string, Float64Array>();
+  const env = async (s: Source) => envs.get(s.key) ?? (envs.set(s.key, await envelope(s.file)), envs.get(s.key)!);
+  const words: Record<string, Word[]> = {};
+  for (const s of Object.values(all)) if (existsSync(p.transcript(stemOf(s.key)))) words[s.key] = await readJson<Word[]>(p.transcript(stemOf(s.key)));
+  const sign = (ms: number) => {
+    const s = Math.round(Math.abs(ms) / 100) / 10;
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return `${ms < 0 ? "-" : "+"}${h}:${String(m).padStart(2, "0")}:${sec.toFixed(1).padStart(4, "0")}`;
+  };
+  const MIN_S = 8;
+  // Cameras of one shoot start within an hour or so of each other: the offset is looked for near the
+  // difference of the two cameras' first files (--any: anywhere). A long way off, a clip's best peak is noise.
+  const firstA = Math.min(...arolls.filter((a) => sig(a) !== sig(targets[0])).map((a) => shotAt(a.file)!.getTime()));
+  const firstB = Math.min(...targets.filter((t) => shotAt(t.file)).map((t) => shotAt(t.file)!.getTime()));
+  const WINDOW = rest.includes("--any") ? Infinity : 90 * 60 * 1000;
+  const guess = firstA - firstB;
+  const inWindow = (ms: number) => Math.abs(ms - guess) <= WINDOW;
+  log(`Each clip's sound against the A-roll of the other camera: where it fits (same sound = same moment), as A-roll clock − this clip's clock. The first files of the two cameras are ${sign(guess)} apart: the offset is looked for within ${Number.isFinite(WINDOW) ? "90 min" : "any distance"} of that (--any: anywhere). Clips under ${MIN_S} s are listed, not counted.\n`);
+  type Peak = { ms: number; corr: number; a: Source; lag: number; key: string };
+  const peaks: Peak[] = [];
+  const realRange = (s: Source) => (s.realAt ? [new Date(s.realAt).getTime(), new Date(s.realAt).getTime() + s.durationMs] : undefined);
+  const lines = new Map<string, string[]>();
+  for (const t of targets) {
+    const shot = shotAt(t.file);
+    const others = arolls.filter((a) => sig(a) !== sig(t));
+    const head = `${t.key}  ${clock(t.durationMs)}  ${words[t.key] ? `${words[t.key].length} words` : "no transcript"}`;
+    const out: string[] = [];
+    lines.set(t.key, out);
+    if (!shot || !others.length) {
+      out.push(`${head}: ${shot ? "no A-roll of another camera" : "no time stamp"}`);
+      continue;
+    }
+    out.push(head);
+    const b = await env(t);
+    const mine: Peak[] = [];
+    for (const a of others) {
+      const ea = await env(a);
+      if (ea.length <= b.length + 4) continue;
+      for (const r of topLags(b, ea)) mine.push({ ...r, a, key: t.key, ms: shotAt(a.file)!.getTime() + r.lag * ENVELOPE_STEP * 1000 - shot.getTime() });
+    }
+    mine.sort((x, y) => y.corr - x.corr);
+    const near = mine.filter((q) => inWindow(q.ms));
+    if (t.durationMs >= MIN_S * 1000) peaks.push(...near);
+    const best = near[0];
+    if (best) out.push(`    best fit near the guess: ${best.a.key} @ ${(best.lag * ENVELOPE_STEP).toFixed(1)} s, corr ${best.corr.toFixed(2)}, offset ${sign(best.ms)}`);
+    else out.push(`    no A-roll of the other camera near the guess`);
+    // With the clocks known: was the A-roll camera rolling at the same time? Then this is a second angle, its talk in the A-roll.
+    const r = realRange(t);
+    const over = r ? Object.values(summary.aroll).filter((a) => a.key !== t.key && realRange(a) && realRange(a)![0] < r[1] && realRange(a)![1] > r[0]) : [];
+    if (settings.clocks?.length) {
+      if (over.length) out.push(`    real time: the A-roll was rolling (${over.map((a) => a.key).join(", ")}): a second angle, b-roll`);
+      else if (words[t.key]?.length >= 4) out.push(`    real time: no A-roll was rolling: talk only this clip has — sort it aroll if it's said to the camera: "${words[t.key].map((w) => w.text).join(" ").slice(0, 100)}"`);
+      else out.push(`    real time: no A-roll was rolling, no talk: b-roll`);
+    }
+    const bw = words[t.key];
+    if (bw && bw.length >= 4) {
+      let hit: { ratio: number; at: number; a: Source } | undefined;
+      for (const a of Object.values(summary.aroll)) {
+        if (a.key === t.key || !words[a.key]) continue;
+        const m = wordsMatch(bw, words[a.key]);
+        if (!hit || m.ratio > hit.ratio) hit = { ...m, a };
+      }
+      if (hit && hit.ratio >= 0.6) out.push(`    words: the same as ${hit.a.key} @ ${(words[hit.a.key][hit.at].startMs / 1000).toFixed(1)} s (${Math.round(hit.ratio * 100)} %)`);
+    }
+  }
+  // The offset the clips share: every peak is a candidate; the one at which the most clips, together, correlate
+  // with the A-roll that was rolling then (a single clip's peak is often noise, the sum over clips isn't).
+  const counted = targets.filter((t) => t.durationMs >= MIN_S * 1000 && shotAt(t.file) && arolls.some((a) => sig(a) !== sig(t)));
+  const score = async (ms: number) => {
+    const per: { t: Source; a: Source; corr: number }[] = [];
+    for (const t of counted) {
+      const b = await env(t);
+      const at = shotAt(t.file)!.getTime() + ms;
+      for (const a of arolls) {
+        if (sig(a) === sig(t)) continue;
+        const lag = Math.round((at - shotAt(a.file)!.getTime()) / 1000 / ENVELOPE_STEP);
+        const c = corrNear(b, await env(a), lag);
+        if (!Number.isNaN(c.corr)) per.push({ t, a, corr: c.corr });
+      }
+    }
+    // A pair's chance correlation is about 0.1–0.3: only what's above that counts.
+    return { per, total: per.reduce((n, x) => n + Math.max(0, x.corr - 0.25), 0) };
+  };
+  const bins = new Map<number, number>();
+  for (const q of peaks) if (q.corr >= 0.3) bins.set(Math.round(q.ms / 2000), q.ms);
+  // --at <offset>: score that one too (a known or suspected offset), and say how it compares.
+  const atArg = rest.indexOf("--at") >= 0 ? rest[rest.indexOf("--at") + 1] : undefined;
+  if (atArg) {
+    const ms = offsetMs(atArg);
+    const r = await score(ms);
+    log(`\n--at ${sign(ms)}: ${r.per.length} clips overlap the A-roll, score ${r.total.toFixed(2)}: ${r.per.map((x) => `${x.t.key.slice(-11, -6)}/${x.a.key.slice(-11, -6)} ${x.corr.toFixed(2)}`).join(", ")}`);
+    bins.set(Math.round(ms / 1000), ms);
+  }
+  type Cand = { ms: number; total: number; per: { t: Source; a: Source; corr: number }[] };
+  const cands: Cand[] = [];
+  for (const ms of bins.values()) {
+    const r = await score(ms);
+    if (r.per.length >= 2) cands.push({ ms, ...r });
+  }
+  cands.sort((a, b) => b.total - a.total);
+  let best: Cand | undefined = cands[0];
+  if (cands.length > 1) {
+    log(`\nCandidate offsets, best first (score: how much the overlapping clips correlate above chance; pairs over 0.3):`);
+    for (const c of cands.slice(0, 5)) log(`  ${sign(c.ms)}  score ${c.total.toFixed(2)}, ${c.per.filter((x) => x.corr >= 0.3).length} of ${c.per.length} pairs: ${c.per.filter((x) => x.corr >= 0.3).map((x) => `${x.t.key.slice(-11, -6)}/${x.a.key.slice(-11, -6)} ${x.corr.toFixed(2)}`).join(", ")}`);
+  }
+  if (best) {
+    // Refine: the offset the agreeing pairs point at.
+    const agree = best.per.filter((x) => x.corr >= 0.3);
+    if (agree.length) {
+      const fine = await Promise.all(agree.map(async (x) => {
+        const lag = Math.round((shotAt(x.t.file)!.getTime() + best!.ms - shotAt(x.a.file)!.getTime()) / 1000 / ENVELOPE_STEP);
+        const n = corrNear(await env(x.t), await env(x.a), lag, 30, 1);
+        return shotAt(x.a.file)!.getTime() + n.lag * ENVELOPE_STEP * 1000 - shotAt(x.t.file)!.getTime();
+      }));
+      fine.sort((a, b) => a - b);
+      best = { ...best, ms: fine[Math.floor(fine.length / 2)] };
+    }
+    for (const x of best.per) lines.get(x.t.key)?.push(`    at the shared offset: with ${x.a.key}, corr ${x.corr.toFixed(2)}`);
+    for (const out of lines.values()) log(out.join("\n"));
+    const good = best.per.filter((x) => x.corr >= 0.3);
+    log(`\nShared offset: A-roll clock − b-roll clock = ${sign(best.ms)}: ${best.per.length} of ${counted.length} clips overlap the A-roll there, ${good.length} of them correlate (over 0.3; mean ${(best.per.reduce((n, x) => n + x.corr, 0) / best.per.length).toFixed(2)}).${good.length < 3 ? " Few: confirm it with a sentence both cameras caught, or a frame of each at the same moment." : ""}`);
+    const a0 = arolls.find((a) => sig(a) !== sig(targets[0]));
+    if (a0 && !settings.clocks?.length) log(`If the b-roll camera's clock is right, put in project.yaml:\n  clocks: [{ match: "${a0.width}x${a0.height}", offset: "${sign(best.ms)}" }]\nthen analyze again (chronology.txt is in real time).`);
+    else if (settings.clocks?.length) log(`project.yaml has clocks: ${JSON.stringify(settings.clocks)}: chronology.txt is in real time.`);
+  } else {
+    for (const out of lines.values()) log(out.join("\n"));
+    log("\nNo offset at which the clips overlap the A-roll: the cameras may not have run at the same time, or the clips are too short.");
+  }
+}
+
+// --- merge -----------------------------------------------------------------------------
+
+/** A long video planned in parts: plan.part1.yaml … plan.partN.yaml, in that order, as one plan.yaml; titles.main from the first part that has it, titles.end from the last. */
+async function merge() {
+  const parts: { i: number; plan: Plan }[] = [];
+  for (let i = 1; i <= 20; i++) {
+    const f = path.join(p.dir, `plan.part${i}.yaml`);
+    if (!existsSync(f)) continue;
+    const plan = await readYaml<Plan>(f);
+    if (!plan?.segments?.length) throw new Error(`${rel(f)}: no segments`);
+    parts.push({ i, plan });
+  }
+  if (!parts.length) throw new Error(`No ${rel(path.join(p.dir, "plan.part1.yaml"))}: the parts of the plan`);
+  const segments = parts.flatMap((x) => x.plan.segments.map((s) => ({ ...s, why: `[part ${x.i}] ${s.why ?? ""}`.trim() })));
+  const titles: Plan["titles"] = {};
+  const main = parts.find((x) => x.plan.titles?.main != null);
+  const end = [...parts].reverse().find((x) => x.plan.titles?.end != null);
+  if (main) titles.main = main.plan.titles!.main;
+  if (end) titles.end = end.plan.titles!.end;
+  const out: Plan = { segments, ...(Object.keys(titles).length ? { titles } : {}) };
+  await writeFile(p.plan, `# ${name}: merged from ${parts.map((x) => `plan.part${x.i}.yaml`).join(", ")} (npm run video -- merge). Seconds of each segment's own file.\n${YAML.stringify(out)}`);
+  log(`${rel(p.plan)}: ${segments.length} segments from ${parts.length} parts, ${new Set(segments.map((s) => s.file)).size} files; titles ${JSON.stringify(titles)}`);
+}
+
 // --- check -----------------------------------------------------------------------------
 
 async function check() {
@@ -236,7 +435,7 @@ async function check() {
       log(`  ${String(i + 1).padStart(2)}. ${clock(at)} ${extra.padEnd(14)} "${text.length > 90 ? `${text.slice(0, 87)}…` : text}"`);
       at += to - from;
     }
-    const cutAt = (t: Time) => {
+    const cutAt = (t: TitleAt) => {
       const hit = segmentAt(plan, summary, t);
       return hit ? clock(plan.segments.slice(0, hit.i).reduce((n, s) => n + Math.round((seconds(s.to) - seconds(s.from)) * 1000), 0) + hit.ms - Math.round(seconds(hit.seg.from) * 1000)) : "?";
     };
@@ -281,12 +480,14 @@ async function mcp() {
     case "ingest": {
       const files = footageFiles(settings).filter((f) => f.role && f.role !== "skip");
       const music = musicFile(settings);
+      // --all: the b-roll transcribed too, to find talk in it (a clip with talk belongs on the A-roll track).
+      const spoken = args.includes("--all") ? files : files.filter((f) => f.role === "aroll");
       log(bootstrap("ingest", {
         project,
         footage: files.map((f) => ({ path: f.file, role: f.role })),
         ...(music && existsSync(music) ? { music } : {}),
         language: settings.language ?? "fi",
-        transcripts: files.filter((f) => f.role === "aroll").map((f) => ({ path: f.file, out: p.transcript(stemOf(f.key)) })),
+        transcripts: spoken.map((f) => ({ path: f.file, out: p.transcript(stemOf(f.key)) })),
       }));
       return;
     }
@@ -320,14 +521,16 @@ async function loadSettings(): Promise<Settings> {
 
 async function saveSettings(s: Settings) {
   const old = existsSync(p.settings) ? await readFile(p.settings, "utf8") : "";
-  const head = old.split("\n").filter((l) => l.startsWith("#") && !/^#\s*(musicDb|titles)/.test(l)).join("\n");
-  const tail = old.split("\n").filter((l) => /^#\s*(musicDb|titles)/.test(l)).join("\n");
+  const head = old.split("\n").filter((l) => l.startsWith("#") && !/^#\s*(musicDb|titles|clocks)/.test(l)).join("\n");
+  const tail = old.split("\n").filter((l) => /^#\s*(musicDb|titles|clocks)/.test(l)).join("\n");
   await writeFile(p.settings, `${head ? `${head}\n` : ""}${YAML.stringify(s)}${tail ? `${tail}\n` : ""}`);
 }
 
 async function loadPlan() {
+  const at = rest.indexOf("--plan");
+  const planFile = at >= 0 && rest[at + 1] ? path.resolve(p.dir, rest[at + 1]) : p.plan;
   if (!existsSync(p.summary)) throw new Error(`No ${rel(p.summary)}: npm run video -- analyze ${name}`);
-  if (!existsSync(p.plan)) throw new Error(`No ${rel(p.plan)}: the planner writes it`);
+  if (!existsSync(planFile)) throw new Error(`No ${rel(planFile)}: the planner writes it`);
   const summary = await readJson<Summary>(p.summary);
   const words: Record<string, Word[]> = {};
   for (const key of Object.keys(summary.aroll)) {
@@ -335,5 +538,5 @@ async function loadPlan() {
     if (!existsSync(f)) throw new Error(`No ${rel(f)}: run the ingest script in Resolve (npm run video -- mcp ${name} ingest), then analyze`);
     words[key] = await readJson<Word[]>(f);
   }
-  return { summary, plan: await readYaml<Plan>(p.plan), words, settings: await loadSettings() };
+  return { summary, plan: await readYaml<Plan>(planFile), words, settings: await loadSettings() };
 }

@@ -19,6 +19,14 @@ def bin_named(mp, parent, name):
 def clips_in(folder):
     return {c.GetName(): c for c in (folder.GetClipList() or [])}
 
+def clips_under(folder):
+    """Every media pool item under `folder`, by name: the bin and its sub-bins (the user may have sorted them into A-roll/B-roll)."""
+    out = {}
+    for s in folder.GetSubFolderList() or []:
+        out.update(clips_under(s))
+    out.update(clips_in(folder))
+    return out
+
 def find_clip(folder, name):
     """A media pool item by name, anywhere under `folder`."""
     for c in folder.GetClipList() or []:

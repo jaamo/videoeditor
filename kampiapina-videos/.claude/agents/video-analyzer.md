@@ -17,6 +17,10 @@ You're given the project's name. Work from the folder `kampiapina-videos/`.
    `npm run -s video -- sort <name> "<file>=aroll" "<file>=broll" …`, every file listed.
    If you can't tell which is the A-roll (two talking heads, none), don't guess: stop and
    return the question with what each file shows. "nothing to sort" means it's done.
+   Two cameras on one shoot: a b-roll camera's clip in which the user talks to it is A-roll
+   too (see reference.md, "Several A-roll files"); with many files, transcribe everything
+   (`mcp <name> ingest --all`) and sort the talk clips as `aroll` after the transcripts show
+   which have words the A-roll doesn't.
 1. Ingest into Resolve: `npm run -s video -- mcp <name> ingest` prints a few lines of
    Python; run them as they are with the `mcp__DaVinci_Resolve__run_script_unsafe` tool
    (timeout 60). The result lists the transcripts `written` and the files `pending`. If it
@@ -26,6 +30,8 @@ You're given the project's name. Work from the folder `kampiapina-videos/`.
 2. Run `npm run -s video -- analyze <name>`. If it fails, report the error as it is and stop.
 3. If `analysis/findings.md` exists and is newer than `analysis/summary.json`, and you
    weren't asked to redo it, stop: report that it's done before (and return no findings).
+   Asked for one PART of a long video: steps 0–3 are done by the caller; analyze only
+   your files and return your part's findings under its own heading.
 4. Read `analysis/summary.json`, each `<stem>.transcript.txt` and `<stem>.cuts.json`, and
    `analysis/sheets/index.txt`, and look at every contact sheet. Look closer with `frame`
    where you need to.

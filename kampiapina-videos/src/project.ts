@@ -36,7 +36,17 @@ export const TITLE_AFTER = { social: 16, musicBy: 5 };
 /** The end title starts over the sign-off and runs past the last word: this long before the talk's end when the plan doesn't say where. */
 export const END_OVERLAP = 8;
 export const MUSIC_DB = -18;
+/** The punch-in on a POV shot; a wide talking-head shot takes 1.24 (the planner chooses). */
 export const PUNCH = 1.18;
+/**
+ * The rotation a clip needs on the timeline so it shows the right way up. Resolve turns a
+ * file tagged 180° itself (a chest cam worn upside down), but shows one tagged ±90° (held
+ * upright) as stored: that one is turned the other way, to stand.
+ */
+export function rotationFor(s: { rotation?: number }): number {
+  const r = s.rotation ?? 0;
+  return Math.abs(r) === 90 ? -r : 0;
+}
 /** A punch-in past this is soft from 4K on full HD. */
 const MAX_ZOOM = 1.6;
 
@@ -83,9 +93,16 @@ export type Settings = {
   titles?: Partial<Record<keyof typeof TITLES, string | false>>;
   /** What each dropped file is, by name. */
   roles?: Record<string, Role>;
+  /**
+   * Cameras whose clock is off (`npm run video -- sync` finds the offset): `match` is tested
+   * against the file's name, its `WxH`, fps, role and camera; `offset` is what that clock
+   * shows minus real time ("+14:23:00", "-0:02:00" or seconds). Real time orders the clips.
+   */
+  clocks?: { match: string; offset: Time }[];
 };
 
-export type Source = Probe & { file: string; key: string; role: "aroll" | "broll"; group?: string };
+/** `shotAt`: by the camera's clock; `realAt`: with the clock's offset taken off (ISO, local). */
+export type Source = Probe & { file: string; key: string; role: "aroll" | "broll"; group?: string; shotAt?: string; realAt?: string };
 export type Summary = {
   /** The timeline's frame rate: the A-roll's. */
   fps: number;
@@ -104,6 +121,8 @@ export type Insert = {
   until: Time;
   /** Seconds into the insert's own file. Default 0. */
   from?: Time;
+  /** Degrees to turn the picture on the timeline (180 when this stretch is upside down). */
+  rotation?: number;
   why?: string;
 };
 export type PlanSegment = {
@@ -114,6 +133,12 @@ export type PlanSegment = {
   why?: string;
   /** A punch-in: 1 as shot, 1.18 closer. Hides a jump cut at the join before it. */
   zoom?: number;
+  /**
+   * Degrees to turn this piece on the timeline, on top of what the file's tag needs: 180 when
+   * the camera was held the other way up for this stretch (a chest cam worn upside down, taken
+   * in the hand and turned to the face: the file's 180° tag then turns the face upside down).
+   */
+  rotation?: number;
   inserts?: Insert[];
 };
 export type Plan = {
@@ -123,8 +148,12 @@ export type Plan = {
    * pause after the intro has said what the video is about (the talk stops there for the
    * title); `end` where the sign-off starts (the end title plays over it).
    */
-  titles?: { main?: Time; end?: Time };
+  titles?: { main?: TitleAt; end?: TitleAt };
 };
+/** A moment of the talk: seconds of the only A-roll, or `{ file, at }` when there are several (the first segment of that file holding it). */
+export type TitleAt = Time | { file: string; at: Time };
+export const titleMs = (t: TitleAt) => msOf(typeof t === "object" ? t.at : t);
+export const titleFile = (t: TitleAt) => (typeof t === "object" ? t.file : undefined);
 
 /** The footage: every video in `source` (and `source`/footage/), with its role from project.yaml. */
 export function footageFiles(settings: Settings): { file: string; key: string; role?: Role }[] {
@@ -157,6 +186,29 @@ export function seconds(t: Time): number {
 }
 export const msOf = (t: Time) => Math.round(seconds(t) * 1000);
 
+/** A clock offset as ms: "+14:23:00", "-0:02:00", "1:23.4" or seconds. */
+export function offsetMs(t: Time): number {
+  if (typeof t === "number") return Math.round(t * 1000);
+  const m = String(t).trim().match(/^([+-]?)(?:(\d+):)?(?:(\d+):)?(\d+(?:[.,]\d+)?)$/);
+  if (!m) throw new Error(`Not a clock offset: "${t}" (use +14:23:00, -0:02:00 or seconds)`);
+  const parts = [m[2], m[3], m[4]].filter((x) => x !== undefined).map((x) => Number(x!.replace(",", ".")));
+  const s = parts.reduce((n, x) => n * 60 + x, 0);
+  return (m[1] === "-" ? -1 : 1) * Math.round(s * 1000);
+}
+
+/** The ms a file's clock is ahead of real time, by project.yaml's `clocks`. */
+export function clockOffsetMs(settings: Settings, s: { key: string; width: number; height: number; fps: number; role?: string; camera?: string }): number {
+  const tags = [s.key, `${s.width}x${s.height}`, `${s.width}x${s.height}@${Math.round(s.fps * 1000) / 1000}`, String(Math.round(s.fps * 1000) / 1000), s.role ?? "", s.camera ?? ""];
+  for (const c of settings.clocks ?? []) if (tags.some((t) => t === c.match || t.includes(c.match))) return offsetMs(c.offset);
+  return 0;
+}
+
+/** A moment as the camera clocks and the real time of a source, as ISO local strings (no zone). */
+export function localIso(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 export const clock = (ms: number) => {
   const s = Math.max(0, ms) / 1000;
   return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
@@ -170,11 +222,12 @@ export function arollOf(seg: PlanSegment, summary: Summary): Source | undefined 
 }
 
 /** The segment a moment of the A-roll falls in (the first one that holds it), or nothing. */
-export function segmentAt(plan: Plan, summary: Summary, t: Time): { i: number; seg: PlanSegment; main: Source; ms: number } | undefined {
-  const ms = msOf(t);
+export function segmentAt(plan: Plan, summary: Summary, t: TitleAt): { i: number; seg: PlanSegment; main: Source; ms: number } | undefined {
+  const ms = titleMs(t);
+  const file = titleFile(t);
   for (const [i, seg] of plan.segments.entries()) {
     const main = arollOf(seg, summary);
-    if (!main) continue;
+    if (!main || (file && main.key !== file)) continue;
     try {
       if (msOf(seg.from) - 50 <= ms && ms <= msOf(seg.to) + 50) return { i, seg, main, ms };
     } catch {}
@@ -230,6 +283,7 @@ export function checkPlan(plan: Plan, summary: Summary, words: Record<string, Wo
     }
     for (const k of kept) if (k.key === main.key && from < k.to - 100 && to > k.from + 100) warn(where, `repeats ${clock(Math.max(k.from, from))}–${clock(Math.min(k.to, to))}, also in an earlier segment`);
     kept.push({ key: main.key, from, to });
+    if (s.rotation != null && ![0, 90, 180, 270, -90].includes(s.rotation)) err(where, `rotation ${s.rotation}: 0, 90, 180 or -90`);
     const zoom = s.zoom ?? 1;
     if (zoom < 1 || zoom > MAX_ZOOM) err(where, `zoom ${zoom}: 1 (as shot) to ${MAX_ZOOM}`);
     else if (zoom !== 1 && (zoom < 1.08 || zoom > 1.3)) warn(where, `zoom ${zoom}: a punch-in reads as a second camera at about 1.15–1.25`);
@@ -273,10 +327,14 @@ export function checkPlan(plan: Plan, summary: Summary, words: Record<string, Wo
   // The titles: the main title in the intro's pause, the end title over the sign-off.
   const t = plan.titles ?? {};
   const cutMs = (hit: NonNullable<ReturnType<typeof segmentAt>>) => plan.segments.slice(0, hit.i).reduce((n, s) => n + msOf(s.to) - msOf(s.from), 0) + hit.ms - msOf(hit.seg.from);
+  for (const k of ["main", "end"] as const) {
+    const v = t[k];
+    if (v != null && !titleFile(v) && Object.keys(summary.aroll).length > 1) warn(`titles.${k}`, `several A-roll files: say which, as { file: <A-roll file>, at: <seconds> }`);
+  }
   if (t.main == null) warn("titles", "no main: the main title goes in the pause after the intro has said what the video is about (titles: { main: <A-roll seconds> })");
   else {
     const hit = segmentAt(plan, summary, t.main);
-    if (!hit) err("titles.main", `${clock(msOf(t.main))} is in no segment: it must be a moment of the talk that's kept`);
+    if (!hit) err("titles.main", `${clock(titleMs(t.main))} is in no segment: it must be a moment of the talk that's kept`);
     else {
       const at = cutMs(hit);
       if (at < 3000 || at > 30_000) warn("titles.main", `${clock(at)} into the cut: the title comes after the greeting and one sentence on what the video is about, usually 5–15 s in`);
@@ -289,7 +347,7 @@ export function checkPlan(plan: Plan, summary: Summary, words: Record<string, Wo
   if (t.end == null) warn("titles", `no end: the end title starts where the sign-off starts and plays over it (titles: { end: <A-roll seconds> }); without it, ${END_OVERLAP} s before the last word`);
   else {
     const hit = segmentAt(plan, summary, t.end);
-    if (!hit) err("titles.end", `${clock(msOf(t.end))} is in no segment`);
+    if (!hit) err("titles.end", `${clock(titleMs(t.end))} is in no segment`);
     else {
       const left = lengthMs - cutMs(hit);
       if (hit.i !== plan.segments.length - 1) warn("titles.end", `in segment ${hit.i + 1}, not the last: the end title covers everything after it`);
@@ -313,8 +371,9 @@ export type Build = {
   /** Every file the cut uses, and the colour group its camera's clips go in. */
   media: { key: string; path: string; group?: string }[];
   /** Timeline frames from its start; source frames of the file (`outF` exclusive). */
-  aroll: { key: string; inF: number; outF: number; atF: number; zoom: number; why?: string }[];
-  broll: { key: string; inF: number; outF: number; atF: number; why?: string }[];
+  /** `rotation`: degrees to turn the clip on the timeline (Resolve's Rotation Angle), when the file is stored sideways. */
+  aroll: { key: string; inF: number; outF: number; atF: number; lenF: number; zoom: number; rotation?: number; why?: string }[];
+  broll: { key: string; inF: number; outF: number; atF: number; rotation?: number; why?: string }[];
   /**
    * The main title (a timeline in the template's bin): its picture on track 3 at `atF`, in a gap
    * of the talk, `from`–`to` seconds of the title's own timeline; the whole of it as sound
@@ -349,22 +408,23 @@ export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p
   const hasMusic = !!music && existsSync(music);
 
   // The talk in pieces: the segments, the one the main title falls in split there, since the talk stops for the title.
-  type Piece = { seg: number; main: Source; fromMs: number; toMs: number; zoom: number; inserts: Insert[]; why?: string };
+  type Piece = { seg: number; main: Source; fromMs: number; toMs: number; zoom: number; rotation: number; inserts: Insert[]; why?: string };
   const mainHit = on("main") && plan.titles?.main != null ? segmentAt(plan, summary, plan.titles.main) : undefined;
   const endHit = on("end") && plan.titles?.end != null ? segmentAt(plan, summary, plan.titles.end) : undefined;
   const pieces: Piece[] = [];
   let titleBefore: number | undefined;
   plan.segments.forEach((s, i) => {
     const main = arollOf(s, summary)!;
-    const piece: Piece = { seg: i, main, fromMs: msOf(s.from), toMs: msOf(s.to), zoom: s.zoom ?? 1, inserts: s.inserts ?? [], ...(s.why ? { why: s.why } : {}) };
+    const piece: Piece = { seg: i, main, fromMs: msOf(s.from), toMs: msOf(s.to), zoom: s.zoom ?? 1, rotation: s.rotation ?? 0, inserts: s.inserts ?? [], ...(s.why ? { why: s.why } : {}) };
     if (mainHit?.i !== i) {
       pieces.push(piece);
       return;
     }
     const t = Math.min(Math.max(mainHit.ms, piece.fromMs), piece.toMs);
-    if (t - piece.fromMs >= 50) pieces.push({ ...piece, toMs: t, inserts: piece.inserts.filter((x) => msOf(x.at) < t) });
+    // A sliver under 0.3 s on either side of the title (the segment ends just after the title point) is dropped, not left as a flash.
+    if (t - piece.fromMs >= 300) pieces.push({ ...piece, toMs: t, inserts: piece.inserts.filter((x) => msOf(x.at) < t) });
     titleBefore = pieces.length;
-    if (piece.toMs - t >= 50) pieces.push({ ...piece, fromMs: t, inserts: piece.inserts.filter((x) => msOf(x.at) >= t) });
+    if (piece.toMs - t >= 300) pieces.push({ ...piece, fromMs: t, inserts: piece.inserts.filter((x) => msOf(x.at) >= t) });
   });
 
   const gapF = fr((MAIN_TITLE.pictureTo - MAIN_TITLE.pictureFrom) * 1000);
@@ -379,11 +439,13 @@ export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p
       at += gapF;
     }
     use(s.main);
+    // The file's own frames in and out; the piece's length on the timeline in the timeline's frames (another camera may run at another rate).
     const inF = Math.round((s.fromMs / 1000) * s.main.fps);
     const outF = Math.round((s.toMs / 1000) * s.main.fps);
-    const len = outF - inF;
-    if (len <= 0) continue;
-    aroll.push({ key: s.main.key, inF, outF, atF: at, zoom: s.zoom, ...(s.why ? { why: s.why } : {}) });
+    const len = fr(s.toMs - s.fromMs);
+    if (outF - inF <= 0 || len <= 0) continue;
+    const rot = (((rotationFor(s.main) + s.rotation) % 360) + 360) % 360;
+    aroll.push({ key: s.main.key, inF, outF, atF: at, lenF: len, zoom: s.zoom, ...(rot ? { rotation: rot } : {}), ...(s.why ? { why: s.why } : {}) });
     if (endHit && endHit.i === s.seg && endHit.ms >= s.fromMs - 50 && endHit.ms <= s.toMs + 50) endAtF = at + fr(Math.min(Math.max(endHit.ms, s.fromMs), s.toMs) - s.fromMs);
     for (const x of s.inserts) {
       const src = summary.broll[x.file];
@@ -395,7 +457,8 @@ export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p
       if (n <= 0) continue;
       // The b-roll's own frames: as many as the timeline shows, at its own rate.
       const srcN = Math.round((n / fps) * src.fps);
-      broll.push({ key: x.file, inF: a, outF: a + srcN, atF, ...(x.why ? { why: x.why } : {}) });
+      const brot = (((rotationFor(src) + (x.rotation ?? 0)) % 360) + 360) % 360;
+      broll.push({ key: x.file, inF: a, outF: a + srcN, atF, ...(brot ? { rotation: brot } : {}), ...(x.why ? { why: x.why } : {}) });
     }
     at += len;
   }

@@ -38,6 +38,19 @@ what was taken out and why, the inserts and punch-ins, the titles and music, the
 and that the timeline `<name>` is in the Resolve project. **Stop: the user finishes it in
 Resolve.**
 
+## Long footage (many A-roll files, two cameras)
+
+Over about 30 min of A-roll (a ride talked to a chest cam, dozens of clips): do steps 0–3
+of the analyzer yourself (sort by the Resolve bins or the file names, `mcp ingest --all`,
+`analyze`, `sync` for the cameras' clock offset and the b-roll clips with talk, the
+offset into `project.yaml`'s `clocks`, `analyze` again for `chronology.txt`), write
+`analysis/README-parts.md` with the cameras, the offset and the split (reference.md,
+"Several A-roll files"), then run one analyzer
+per chronological part in parallel, save their findings as `analysis/findings.md` (a
+header with what holds for every part, then the parts), and one planner per part writing
+`plan.partN.yaml`. Then `merge`, `check`, `build`, `dump` and stills yourself, and report
+as in step 3.
+
 ## Re-edits
 
 A change before the user has touched the timeline ("keep the second take", "move that

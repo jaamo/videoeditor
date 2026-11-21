@@ -2,6 +2,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 function need(cmd: string) {
   if (spawnSync(cmd, ["-version"], { stdio: "ignore" }).status !== 0) throw new Error(`Needs ${cmd} (brew install ffmpeg)`);
@@ -31,7 +32,8 @@ export function ffReport(args: string[]): Promise<string> {
 }
 
 export type Camera = "Lumix" | "DJI" | "GoPro";
-export type Probe = { width: number; height: number; durationMs: number; fps: number; hasAudio: boolean; camera?: Camera };
+/** `rotation`: the file's display rotation tag, degrees (0, 90, -90, 180): the frames are stored turned by that much. */
+export type Probe = { width: number; height: number; durationMs: number; fps: number; hasAudio: boolean; camera?: Camera; rotation: number };
 
 type Stream = { codec_type: string; width?: number; height?: number; avg_frame_rate?: string; tags?: Record<string, string>; side_data_list?: { rotation?: number }[] };
 type Format = { duration: string; tags?: Record<string, string> };
@@ -60,7 +62,10 @@ export function probe(file: string): Probe {
   const j = ffprobe(file);
   const v = j.streams.find((s) => s.codec_type === "video");
   if (!v) throw new Error(`No video in ${file}`);
-  const rotation = Math.abs(Number(v.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? v.tags?.rotate ?? 0)) % 180;
+  const tag = Number(v.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? v.tags?.rotate ?? 0) || 0;
+  const norm = ((Math.round(tag) % 360) + 360) % 360;
+  const rotationTag = norm === 270 ? -90 : norm;
+  const rotation = Math.abs(rotationTag) % 180;
   const [n, d] = (v.avg_frame_rate ?? "30/1").split("/").map(Number);
   const camera = cameraOf([j.format.tags ?? {}, ...j.streams.map((s) => s.tags ?? {})]);
   return {
@@ -70,7 +75,21 @@ export function probe(file: string): Probe {
     fps: d ? n / d : 30,
     hasAudio: j.streams.some((s) => s.codec_type === "audio"),
     ...(camera ? { camera } : {}),
+    rotation: rotationTag,
   };
+}
+
+/**
+ * When a file was shot, by its camera's clock: a 14-digit stamp in its name (DJI_20261115092446_…,
+ * local time), else its creation_time tag.
+ */
+export function shotAt(file: string): Date | undefined {
+  const m = path.basename(file).match(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+  const j = ffprobe(file);
+  const t = j.format.tags?.creation_time ?? j.streams.find((s) => s.tags?.creation_time)?.tags?.creation_time;
+  const d = t ? new Date(t) : undefined;
+  return d && !Number.isNaN(d.getTime()) ? d : undefined;
 }
 
 /** How long a file is, audio or video. */

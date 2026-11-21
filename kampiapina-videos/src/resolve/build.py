@@ -15,11 +15,11 @@ warnings = []
 # The media: in the Footage bin (imported if it isn't there yet), the music in Music.
 footage = bin_named(mp, root, "Footage")
 mp.SetCurrentFolder(footage)
-have = clips_in(footage)
+have = clips_under(footage)
 todo = [m["path"] for m in B["media"] if m["key"] not in have]
 if todo:
     mp.ImportMedia(todo)
-    have = clips_in(footage)
+    have = clips_under(footage)
 items = {}
 for m in B["media"]:
     if m["key"] not in have:
@@ -77,11 +77,31 @@ for i, n in ((1, "Voice"), (2, "Music"), (3, "Jingle")):
     tl.SetTrackName("audio", i, n)
 start = tl.GetStartFrame()
 
-# A-roll with its voice; then zooms and groups.
-infos = [{"mediaPoolItem": items[a["key"]], "startFrame": a["inF"], "endFrame": a["outF"], "trackIndex": 1, "recordFrame": start + a["atF"]} for a in B["aroll"]]
-placed = mp.AppendToTimeline(infos) or []
-if len(placed) != len(infos):
-    warnings.append(f"{len(placed)} of {len(infos)} A-roll pieces placed")
+# A-roll with its voice, one piece at a time: a clip at another frame rate than the timeline's
+# may come out a frame longer or shorter than planned, so each piece goes where the one
+# before really ended, and everything planned after it moves by the same amount (`shifts`).
+shifts = []  # (planned atF, shift in frames) after each piece
+def shift_at(atF):
+    s = 0
+    for a, d in shifts:
+        if a <= atF:
+            s = d
+    return s
+placed, shift, missed = [], 0, 0
+for a in B["aroll"]:
+    got = mp.AppendToTimeline([{"mediaPoolItem": items[a["key"]], "startFrame": a["inF"], "endFrame": a["outF"], "trackIndex": 1, "recordFrame": start + a["atF"] + shift}]) or []
+    if not got:
+        missed += 1
+        placed.append(None)
+        continue
+    placed.append(got[0])
+    actual_end = int(got[0].GetEnd()) - start
+    shift += actual_end - (a["atF"] + shift + a["lenF"])
+    shifts.append((a["atF"], shift))
+if missed:
+    warnings.append(f"{len(B['aroll']) - missed} of {len(B['aroll'])} A-roll pieces placed")
+if shift:
+    warnings.append(f"the pieces drifted {shift} frames from the plan by the end (clips at another frame rate): inserts and titles moved with them")
 groupless = set()
 def grade(item, key):
     g = next((m.get("group") for m in B["media"] if m["key"] == key), None)
@@ -93,18 +113,24 @@ def grade(item, key):
         warnings.append(f'made the colour group "{g}": the project had none')
     item.AssignToColorGroup(groups[g])
 for a, item in zip(B["aroll"], placed):
+    if item is None:
+        continue
     grade(item, a["key"])
     if a.get("zoom", 1) != 1:
         item.SetProperties({"ZoomX": a["zoom"], "ZoomY": a["zoom"]})
+    if a.get("rotation"):
+        item.SetProperty("RotationAngle", a["rotation"])
 
 # B-roll, picture only.
 if B["broll"]:
-    infos = [{"mediaPoolItem": items[b["key"]], "startFrame": b["inF"], "endFrame": b["outF"], "trackIndex": 2, "recordFrame": start + b["atF"], "mediaType": 1} for b in B["broll"]]
+    infos = [{"mediaPoolItem": items[b["key"]], "startFrame": b["inF"], "endFrame": b["outF"], "trackIndex": 2, "recordFrame": start + b["atF"] + shift_at(b["atF"]), "mediaType": 1} for b in B["broll"]]
     placed_b = mp.AppendToTimeline(infos) or []
     if len(placed_b) != len(infos):
         warnings.append(f"{len(placed_b)} of {len(infos)} inserts placed")
     for b, item in zip(B["broll"], placed_b):
         grade(item, b["key"])
+        if b.get("rotation"):
+            item.SetProperty("RotationAngle", b["rotation"])
 
 # The main title: its picture in the gap left for it on track 3, its jingle whole on audio 3, under the intro.
 main_end = 0
@@ -115,12 +141,12 @@ if B.get("main"):
         warnings.append(f'no main title "{m["name"]}" in the media pool (the template has it in Brand/Titles): left out, the gap for it is there')
     else:
         cfps = float(c.GetClipProperty("FPS") or fps)
-        got = mp.AppendToTimeline([{"mediaPoolItem": c, "startFrame": round(m["from"] * cfps), "endFrame": round(m["to"] * cfps), "trackIndex": 3, "recordFrame": start + m["atF"], "mediaType": 1}]) or []
+        got = mp.AppendToTimeline([{"mediaPoolItem": c, "startFrame": round(m["from"] * cfps), "endFrame": round(m["to"] * cfps), "trackIndex": 3, "recordFrame": start + m["atF"] + shift_at(m["atF"]), "mediaType": 1}]) or []
         if got:
             main_end = int(got[0].GetEnd()) - start
         else:
             warnings.append("the main title's picture was not placed")
-        jingle = {"mediaPoolItem": c, "trackIndex": 3, "recordFrame": start + m["jingleAtF"], "mediaType": 2}
+        jingle = {"mediaPoolItem": c, "trackIndex": 3, "recordFrame": start + m["jingleAtF"] + shift_at(m["atF"]), "mediaType": 2}
         if m["jingleFromS"] > 0:
             jingle.update({"startFrame": round(m["jingleFromS"] * cfps), "endFrame": int(c.GetClipProperty("Frames"))})
         got = mp.AppendToTimeline([jingle]) or []
@@ -136,7 +162,7 @@ for t in B["titles"]:
     c = titles.get(t["name"])
     if not c:
         continue
-    at = t["atF"] if "atF" in t else prev_end + t["afterF"]
+    at = t["atF"] + shift_at(t["atF"]) if "atF" in t else prev_end + t["afterF"]
     got = mp.AppendToTimeline([{"mediaPoolItem": c, "trackIndex": t["track"], "recordFrame": start + at}]) or []
     if not got:
         warnings.append(f'"{t["name"]}" was not placed')
@@ -148,7 +174,7 @@ for t in B["titles"]:
 # Music from before the main title to the end of the end title, faded.
 if music_item and B.get("music"):
     m = B["music"]
-    total = max(B["lengthF"], end_at + end_frames)
+    total = max(B["lengthF"] + shift, end_at + end_frames)
     need = total - m["atF"]
     have_frames = round(m["durationMs"] / 1000 * fps)
     if have_frames < need:
@@ -166,3 +192,6 @@ if groupless:
     warnings.append(f"no colour group for {', '.join(sorted(groupless))}: the camera is unknown")
 d = timeline_dump(tl)
 result = {"timeline": name, "fps": fps, "lengthS": d["lengthS"], "items": {k: len(v) for k, v in d["tracks"].items()}, "warnings": warnings}
+# A long build outlasts the MCP's timeout: the result is written next to build.json too (tmp/build.result.json).
+with open(os.path.join(os.path.dirname(ARGS["build"]), "build.result.json"), "w", encoding="utf-8") as f:
+    json.dump(result, f, indent=1)

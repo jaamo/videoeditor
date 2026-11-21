@@ -22,7 +22,9 @@ from the folder `kampiapina-videos/`.
    hold: pauses over ~0.3 s, fillers, stumbles and retakes go; content stays.
 3. Write `plan.yaml`: the talk in order, tight, following the editing rules: every join
    hidden by b-roll or a punch-in (alternate zoom 1 and 1.24 on a wide talking-head shot,
-   1 and 1.18 on POV), inserts where the words are
+   1 and 1.18 on POV), b-roll used generously on a ride (an insert every 20–30 s of POV
+   talk where there is footage; an upside-down or sideways shot gets `rotation:` on the
+   insert, it is not unusable), inserts where the words are
    about what they show. Give every segment and insert a short `why`. Set `titles.main`
    (the pause after the intro has said what the video is about: the talk stops there for
    the main title) and `titles.end` (where the sign-off starts: the end title plays over

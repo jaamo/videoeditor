@@ -44,7 +44,10 @@ You're given the project's name. Work from the folder `kampiapina-videos/`.
    - **Problems**: everything to cut, with times: retakes (which take is best, and why),
      false starts, slips, fillers, long pauses, noise, off-topic talk, the clap or slate.
    - **B-roll**: each file: what it shows, when (seconds of that file), its camera, and which
-     words of the talk it would go with (with their times).
+     words of the talk it would go with (with their times). Every usable section, with the
+     rotation it needs (the ride cam is often clamped under the bar: road, leg, bottles, sky
+     through the frame, upside down or sideways — deliberate shots, see reference.md's
+     rules; judge them turned the right way up). Unusable is only a covered lens, blur or a swing.
    - **Transcript doubts**: words Resolve likely got wrong (names, brands, Kampiapina), so
      the planner reads the right thing.
 

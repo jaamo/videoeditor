@@ -5,7 +5,8 @@ description: Make the first cut of a Kampiapina full-length talking-head video i
 
 # Edit a video
 
-The user gives a project name (`projects/<name>/`), maybe the folder the footage is in, and
+The user gives a project name (registered in `projects/<name>/project.yaml`; the analysis
+and plans live with the footage in `<source>/editor/`), maybe the folder the footage is in, and
 maybe wishes: what it's about, what to keep, what to show. Read [reference.md](reference.md)
 once: it has the files, commands, the phases and the editing rules. You run the agents and
 talk to the user; the agents do the work. Work from the folder `kampiapina-videos/`. Pass

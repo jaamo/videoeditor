@@ -11,7 +11,7 @@
 //   npm run video -- mcp <name> <ingest [--all]|build|dump|still> [args…]   the Python to run through the Resolve MCP (--all: the b-roll transcribed too)
 // Times are seconds of the A-roll file, except where they're of the cut.
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import YAML from "yaml";
 import { roughCut } from "./lib/rough-cut.ts";
@@ -53,7 +53,10 @@ async function init() {
   const settings: Settings = { source: path.resolve(source), resolve: { project, timeline: name }, language: "fi", ...(music ? { music } : {}) };
   await writeFile(p.settings, `# ${name}: settings of the video (see /edit-video)\n${YAML.stringify(settings)}` +
     "# musicDb: -18            # the music's level under the voice\n# titles: { main: \"Main title 2026 (merged)\", social: false }   # another composition than the template's, or false to leave one out\n# clocks: [{ match: \"1920x1080\", offset: \"+14:23:00\" }]   # a camera whose clock is off (npm run video -- sync finds it)\n");
-  log(`${rel(p.settings)}: footage from ${source}${music ? `, music ${music}` : ", no music found there"}; Resolve project "${project}"`);
+  const q = paths(name);
+  await mkdir(q.dir, { recursive: true });
+  await copyFile(q.settings, q.settingsCopy);
+  log(`${rel(p.settings)}: footage from ${source}${music ? `, music ${music}` : ", no music found there"}; Resolve project "${project}"; the analysis and plans go to ${q.dir}`);
   log(`Then: npm run -s video -- sort ${name}`);
 }
 
@@ -134,7 +137,7 @@ async function analyze() {
     log(force ? "analysis: starting over (--force)" : "analysis: the A-roll changed, starting over");
     await rm(p.analysis, { recursive: true, force: true });
   }
-  for (const d of [p.analysis, p.sheets, p.frames, p.tmp]) await mkdir(d, { recursive: true });
+  for (const d of [p.analysis, p.sheets, p.frames, p.tmp, p.cache]) await mkdir(d, { recursive: true });
   // The timeline's rate: the one most of the A-roll is shot at (a second camera's talk may run at another).
   const secondsAt = new Map<number, number>();
   for (const m of mains) secondsAt.set(m.fps, (secondsAt.get(m.fps) ?? 0) + m.durationMs);
@@ -524,6 +527,7 @@ async function saveSettings(s: Settings) {
   const head = old.split("\n").filter((l) => l.startsWith("#") && !/^#\s*(musicDb|titles|clocks)/.test(l)).join("\n");
   const tail = old.split("\n").filter((l) => /^#\s*(musicDb|titles|clocks)/.test(l)).join("\n");
   await writeFile(p.settings, `${head ? `${head}\n` : ""}${YAML.stringify(s)}${tail ? `${tail}\n` : ""}`);
+  if (existsSync(path.dirname(p.settingsCopy))) await copyFile(p.settings, p.settingsCopy);
 }
 
 async function loadPlan() {

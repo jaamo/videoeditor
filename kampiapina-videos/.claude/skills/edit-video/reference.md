@@ -1,8 +1,11 @@
 # Video project reference
 
-Everything the video agents share. A project is `projects/<name>/`; every step reads and
-writes files there, so any of them can be read, fixed by hand, or done again on its own.
-The footage itself stays where it was dropped (`project.yaml`'s `source`): Resolve links to it there.
+Everything the video agents share. A project is registered as `projects/<name>/project.yaml`
+(its settings); everything made about it (analysis, transcripts, findings, plans, build files)
+lives with the footage, in `<source>/editor/`, so it travels with the footage; every step
+reads and writes files there, so any of them can be read, fixed by hand, or done again on
+its own. The footage itself stays where it was dropped (`project.yaml`'s `source`): Resolve
+links to it there. Only the remakeable voice WAVs stay in `projects/<name>/cache/`.
 
 ## The video
 
@@ -85,10 +88,11 @@ insert's `from` and `frame <b-roll file>` are in seconds of that file. `check`'s
 ```
 projects/<name>/
   project.yaml          source, resolve {project, timeline}, language, music, musicDb, titles, roles, clocks
+  cache/<stem>.voice.wav   the A-roll's voice, mastered (analysis only: Resolve plays the camera's sound); remakeable, kept out of the synced footage folder
+<source>/editor/        with the footage (project.yaml is copied here too)
   analysis/
     summary.json        the timeline's fps, every A-roll and b-roll file (size, fps, length, camera, group, shotAt/realAt)
     chronology.txt      every clip in real time (the cameras' clocks corrected by project.yaml's clocks), with length and words
-    <stem>.voice.wav    the A-roll's voice, mastered (analysis only: Resolve plays the camera's sound)
     <stem>.transcript.json   every word: { text, startMs, endMs } (from Resolve, via mcp ingest)
     <stem>.transcript.txt    the same as phrases: [start–end] text, in seconds
     <stem>.silences.json     where the voice is quiet: exact places to cut
@@ -144,7 +148,16 @@ titles:                   # seconds of the A-roll, inside a segment
 - **Inserts**: where the words are about something the b-roll shows, while it's talked
   about, 2–8 s each; and over joins, which they hide. Pick the stretch of the b-roll that
   shows the thing (contact sheets, `frame <file> <s>`). Not over the first 3 s: the viewer
-  sees the speaker first. Don't use the same stretch of b-roll twice.
+  sees the speaker first. Don't use the same stretch of b-roll twice. Use the b-roll
+  generously on a ride (POV talk is one picture for an hour): about one insert every 20–30 s
+  of talk where there is footage, the same stretch of the ride first.
+- **The ride cam's angles are deliberate.** The user clamps the second camera under the
+  handlebar or holds it low and lets it run: the road rolling under the bike with a leg in
+  frame, the bottle and bags from below, the sky and treetops through the frame, the bike
+  in the grass. These are shots, not accidents, and they come out upside down or sideways:
+  judge them after the rotation they need (`frame`, then look at it turned) and name it;
+  the planner sets `rotation: 180` (or 90 / -90) on the insert. Only a lens covered by a
+  glove, a blur or a swing is unusable.
 - **The intro and the main title**: the talk opens with "Morjesta pöytään" and one or two
   sentences on what the video is about; then the main title (`titles.main`): the talk
   stops in the quiet after that sentence, the title plays (4.75 s, its jingle already

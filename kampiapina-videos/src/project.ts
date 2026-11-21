@@ -6,7 +6,7 @@
 //   plan.yaml           the first cut, as the planner decided it
 //   tmp/                build.json and the timeline template the builder gives Resolve
 // The footage itself stays where it was dropped (project.yaml's `source`): Resolve links to it there.
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import YAML from "yaml";
@@ -50,20 +50,38 @@ export function rotationFor(s: { rotation?: number }): number {
 /** A punch-in past this is soft from 4K on full HD. */
 const MAX_ZOOM = 1.6;
 
+/**
+ * The tool's registry of a video is `projects/<name>/project.yaml` (settings); everything
+ * made about the video (analysis, transcripts, findings, plans, build files) lives with the
+ * footage, in an `editor/` folder of its source folder, so it travels with the footage and
+ * outlives this checkout. Only the heavy, remakeable voice WAVs stay out of the footage
+ * folder (a cloud-synced one), in `projects/<name>/cache/`. Until `init` has run (no
+ * project.yaml yet), everything is under `projects/<name>/`.
+ */
 export function paths(name: string) {
-  const dir = path.resolve("projects", name);
+  const reg = path.resolve("projects", name);
+  const settings = path.join(reg, "project.yaml");
+  let dir = reg;
+  if (existsSync(settings)) {
+    const s = YAML.parse(readFileSync(settings, "utf8")) as Settings | null;
+    if (s?.source) dir = path.join(s.source, "editor");
+  }
+  const cache = path.join(reg, "cache");
   const a = (f: string) => path.join(dir, "analysis", f);
   return {
     name,
     dir,
-    settings: path.join(dir, "project.yaml"),
+    settings,
+    /** A copy of the settings beside the analysis, so the editor folder is complete on its own. */
+    settingsCopy: path.join(dir, "project.yaml"),
+    cache,
     analysis: path.join(dir, "analysis"),
     summary: a("summary.json"),
     sheets: a("sheets"),
     frames: a("frames"),
     findings: a("findings.md"),
     /** Per A-roll file (by its stem): the mastered voice, its transcript, silences and the first guess. */
-    voice: (stem: string) => a(`${stem}.voice.wav`),
+    voice: (stem: string) => path.join(cache, `${stem}.voice.wav`),
     transcript: (stem: string) => a(`${stem}.transcript.json`),
     transcriptText: (stem: string) => a(`${stem}.transcript.txt`),
     silences: (stem: string) => a(`${stem}.silences.json`),

@@ -49,6 +49,15 @@ export function rotationFor(s: { rotation?: number }): number {
 }
 /** A punch-in past this is soft from 4K on full HD. */
 const MAX_ZOOM = 1.6;
+/**
+ * A 16:9 picture turned ±90° stands as a pillar in the frame; this zoom (the frame's aspect)
+ * makes its width fill the frame, the middle of the tall picture showing.
+ */
+export const FILL_ZOOM = Math.round((16 / 9) * 1000) / 1000;
+/** The zoom a piece needs on the timeline, its punch-in and, turned ±90°, the fill. */
+export function zoomFor(rotation: number, zoom = 1): number {
+  return Math.round(zoom * (rotation % 180 === 90 ? FILL_ZOOM : 1) * 1000) / 1000;
+}
 
 /**
  * The tool's registry of a video is `projects/<name>/project.yaml` (settings); everything
@@ -270,6 +279,10 @@ export function checkPlan(plan: Plan, summary: Summary, words: Record<string, Wo
     return out;
   }
   const kept: { key: string; from: number; to: number }[] = [];
+  const usedBroll: { key: string; from: number; to: number; where: string }[] = [];
+  // The video is chronological: each insert shot after the one before it (by the files' real times, or within a file).
+  let lastIns: { key: string; realEnd: number; where: string } | undefined;
+  const realMs = (s: Source, ms: number) => (s.realAt ? new Date(s.realAt).getTime() : s.key === lastIns?.key ? 0 : NaN) + ms;
   let lengthMs = 0;
   let prev: { key: string; to: number; zoom: number; coveredEnd: boolean } | undefined;
   plan.segments.forEach((s, i) => {
@@ -330,6 +343,13 @@ export function checkPlan(plan: Plan, summary: Summary, words: Record<string, Wo
       if (until - at > 10_000) warn(iw, `${clock(until - at)} of b-roll: long for one insert over a talk`);
       if (inFrom < 0 || inFrom + (until - at) > src.durationMs + 50) err(iw, `${x.file} is ${clock(src.durationMs)} long: from ${clock(inFrom)} for ${clock(until - at)} runs past it`);
       if (k > 0 && at < msOf(ins[k - 1].until)) err(where, `inserts overlap at ${clock(at)}`);
+      const inTo = inFrom + (until - at);
+      const again = usedBroll.find((u) => u.key === x.file && inFrom < u.to - 100 && inTo > u.from + 100);
+      if (again) err(iw, `${x.file} ${clock(Math.max(inFrom, again.from))}–${clock(Math.min(inTo, again.to))} is already used (${again.where}): never the same stretch of b-roll twice`);
+      usedBroll.push({ key: x.file, from: inFrom, to: inTo, where: iw });
+      const r0 = realMs(src, inFrom);
+      if (lastIns && !Number.isNaN(r0) && (src.realAt || src.key === lastIns.key) && r0 < lastIns.realEnd - 500) err(iw, `${x.file} ${clock(inFrom)} was shot before ${lastIns.where}: the video is chronological, b-roll in ride order`);
+      if (!Number.isNaN(realMs(src, inTo)) && (!lastIns || realMs(src, inTo) > lastIns.realEnd)) lastIns = { key: x.file, realEnd: realMs(src, inTo), where: lastIns && !src.realAt && src.key !== lastIns.key ? lastIns.where : iw };
       if (at <= from + 50) coversStart = true;
       if (until >= to - 50) coversEnd = true;
       const mainAt = plan.titles?.main != null ? segmentAt(plan, summary, plan.titles.main) : undefined;
@@ -391,7 +411,8 @@ export type Build = {
   /** Timeline frames from its start; source frames of the file (`outF` exclusive). */
   /** `rotation`: degrees to turn the clip on the timeline (Resolve's Rotation Angle), when the file is stored sideways. */
   aroll: { key: string; inF: number; outF: number; atF: number; lenF: number; zoom: number; rotation?: number; why?: string }[];
-  broll: { key: string; inF: number; outF: number; atF: number; rotation?: number; why?: string }[];
+  /** `zoom`: with a ±90° rotation, the fill that makes the turned picture's width fill the frame. */
+  broll: { key: string; inF: number; outF: number; atF: number; rotation?: number; zoom?: number; why?: string }[];
   /**
    * The main title (a timeline in the template's bin): its picture on track 3 at `atF`, in a gap
    * of the talk, `from`–`to` seconds of the title's own timeline; the whole of it as sound
@@ -463,7 +484,7 @@ export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p
     const len = fr(s.toMs - s.fromMs);
     if (outF - inF <= 0 || len <= 0) continue;
     const rot = (((rotationFor(s.main) + s.rotation) % 360) + 360) % 360;
-    aroll.push({ key: s.main.key, inF, outF, atF: at, lenF: len, zoom: s.zoom, ...(rot ? { rotation: rot } : {}), ...(s.why ? { why: s.why } : {}) });
+    aroll.push({ key: s.main.key, inF, outF, atF: at, lenF: len, zoom: zoomFor(rot, s.zoom), ...(rot ? { rotation: rot } : {}), ...(s.why ? { why: s.why } : {}) });
     if (endHit && endHit.i === s.seg && endHit.ms >= s.fromMs - 50 && endHit.ms <= s.toMs + 50) endAtF = at + fr(Math.min(Math.max(endHit.ms, s.fromMs), s.toMs) - s.fromMs);
     for (const x of s.inserts) {
       const src = summary.broll[x.file];
@@ -476,7 +497,7 @@ export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p
       // The b-roll's own frames: as many as the timeline shows, at its own rate.
       const srcN = Math.round((n / fps) * src.fps);
       const brot = (((rotationFor(src) + (x.rotation ?? 0)) % 360) + 360) % 360;
-      broll.push({ key: x.file, inF: a, outF: a + srcN, atF, ...(brot ? { rotation: brot } : {}), ...(x.why ? { why: x.why } : {}) });
+      broll.push({ key: x.file, inF: a, outF: a + srcN, atF, ...(brot ? { rotation: brot, zoom: zoomFor(brot) } : {}), ...(x.why ? { why: x.why } : {}) });
     }
     at += len;
   }

@@ -51,6 +51,9 @@ changing those scripts or writing a new one.
   project's fps and its frames count at that rate: convert, or the music is cut short.
   A timeline in the media pool (the main title) appends like a clip, picture and sound
   separately, frames at its own fps.
+- A clip turned ±90° (`RotationAngle`) shows as a pillar: `SetProperties({"ZoomX": 1.778, "ZoomY": 1.778})`
+  on the same item fills the frame with the middle of the tall picture (zoom and rotation both
+  centre on the frame).
 - Punch-ins are `SetProperties({"ZoomX", "ZoomY"})`; fades `SetFades({"FadeIn", "FadeOut"})`
   in frames; the volume `AudioVolume` in dB. Colour groups:
   `item.AssignToColorGroup(project.GetColorGroupsList()[i])`.

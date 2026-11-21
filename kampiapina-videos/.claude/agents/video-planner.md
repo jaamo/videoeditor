@@ -24,8 +24,11 @@ from the folder `kampiapina-videos/`.
    hidden by b-roll or a punch-in (alternate zoom 1 and 1.24 on a wide talking-head shot,
    1 and 1.18 on POV), b-roll used generously on a ride (an insert every 20–30 s of POV
    talk where there is footage; an upside-down or sideways shot gets `rotation:` on the
-   insert, it is not unusable), inserts where the words are
-   about what they show. Give every segment and insert a short `why`. Set `titles.main`
+   insert, it is not unusable; a vertical video gets 90 / -90 on every insert from it and the
+   build fills the frame with it), inserts where the words are
+   about what they show, never the same stretch of b-roll twice and never out of ride order: the video is
+   chronological, so the inserts run through the b-roll in the order it was shot, even when
+   words later would suit an earlier shot (`check` rejects both). Give every segment and insert a short `why`. Set `titles.main`
    (the pause after the intro has said what the video is about: the talk stops there for
    the main title) and `titles.end` (where the sign-off starts: the end title plays over
    it), from the words' times, in the quiet.

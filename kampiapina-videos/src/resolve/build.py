@@ -131,6 +131,8 @@ if B["broll"]:
         grade(item, b["key"])
         if b.get("rotation"):
             item.SetProperty("RotationAngle", b["rotation"])
+        if b.get("zoom", 1) != 1:
+            item.SetProperties({"ZoomX": b["zoom"], "ZoomY": b["zoom"]})
 
 # The main title: its picture in the gap left for it on track 3, its jingle whole on audio 3, under the intro.
 main_end = 0

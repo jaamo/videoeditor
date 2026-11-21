@@ -39,7 +39,9 @@ You're given the project's name. Work from the folder `kampiapina-videos/`.
    (`analysis/broll-sections.partN.json`): `{ "file", "from", "to", "rotation", "what", "talk"? }`
    in seconds of the file; `rotation` is what the picture needs to stand upright (180 when the
    sky or treetops are at the bottom or the road at the top; 90 when the top of the scene
-   points to the right of the frame, -90 to the left); `talk: true` where the user speaks to
+   points to the right of the frame, -90 to the left). A file shot with the camera held
+   upright (a vertical video: the horizon runs up the frame in every tile, the road side to
+   side) gets the same ±90 on every one of its sections, none 0; say so in `what`. `talk: true` where the user speaks to
    that camera. Be generous: the ride cam's angles are deliberate (reference.md); unusable is
    only a covered lens, a blur or a swing, black. Report one line per file.
 4. Read `analysis/summary.json`, each `<stem>.transcript.txt` and `<stem>.cuts.json`, and
@@ -57,7 +59,8 @@ You're given the project's name. Work from the folder `kampiapina-videos/`.
      words of the talk it would go with (with their times). Every usable section, with the
      rotation it needs (the ride cam is often clamped under the bar: road, leg, bottles, sky
      through the frame, upside down or sideways — deliberate shots, see reference.md's
-     rules; judge them turned the right way up). Unusable is only a covered lens, blur or a swing.
+     rules; judge them turned the right way up). A file held upright throughout (a vertical
+     video) is named as such: all of it needs the same ±90, and the tool fills the frame with it. Unusable is only a covered lens, blur or a swing.
    - **Transcript doubts**: words Resolve likely got wrong (names, brands, Kampiapina), so
      the planner reads the right thing.
 

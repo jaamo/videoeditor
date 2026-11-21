@@ -485,13 +485,21 @@ async function broll() {
   if (!files.length) throw new Error(`No ${rel(path.join(p.analysis, "broll-sections.json"))} (or broll-sections.partN.json): the analyzer lists the usable sections of the b-roll first`);
   const sections: BrollSection[] = [];
   for (const f of files) sections.push(...(await readJson<BrollSection[]>(f)));
-  const { placed, skipped, cutEndS } = placeBroll(dump, summary, sections, { maxLen: num("--max-len", 10), gap: num("--gap", 4), maxShift: num("--shift", 240), keepTalk: rest.includes("--talk") });
+  const { placed, skipped, twice, order, cutEndS } = placeBroll(dump, summary, sections, { maxLen: num("--max-len", 10), gap: num("--gap", 4), maxShift: num("--shift", 240), keepTalk: rest.includes("--talk") });
   const groupOf = (key: string) => (summary.broll[key] ?? summary.aroll[key])?.group;
   await mkdir(p.tmp, { recursive: true });
   await writeFile(path.join(p.tmp, "broll.json"), JSON.stringify({ project: (await loadSettings()).resolve?.project ?? name, items: placed.map((x) => ({ ...x, ...(groupOf(x.key) ? { group: groupOf(x.key) } : {}) })) }, null, 1));
   log(`${sections.length} sections, ${placed.length} to place (${clock(placed.reduce((n, x) => n + x.lenS, 0) * 1000)}), ${skipped.length} skipped; the cut is ${clock(cutEndS * 1000)} with ${(dump.tracks[Object.keys(dump.tracks).find((k) => k.startsWith("video 2 ")) ?? ""] ?? []).length} inserts on V2 already`);
   for (const x of placed) log(`  ${clock(x.atS * 1000).padStart(7)}  ${x.key} ${(x.inF / (summary.broll[x.key] ?? summary.aroll[x.key]).fps).toFixed(1)}–${(x.outF / (summary.broll[x.key] ?? summary.aroll[x.key]).fps).toFixed(1)} s  rot ${String(x.rotation).padStart(4)}  shift ${String(x.shiftS).padStart(6)} s  ${x.what}`);
   for (const s of skipped) log(`  skipped ${s.file} ${s.from}–${s.to}: ${s.why}`);
+  if (twice.length) {
+    log(`\n${twice.length} stretch${twice.length === 1 ? "" : "es"} of a file on the timeline twice (never use the same b-roll twice; take one out in Resolve):`);
+    for (const t of twice) log(`  ${t.file} ${t.from.toFixed(1)}–${t.to.toFixed(1)} s again on ${t.where}`);
+  }
+  if (order.length) {
+    log(`\n${order.length} insert${order.length === 1 ? "" : "s"} on V2 out of ride order (the video is chronological; move or take out in Resolve):`);
+    for (const t of order) log(`  ${t.file} on ${t.where} was shot before ${t.before}`);
+  }
   if (placed.length) log(`\nNow: npm run -s video -- mcp ${name} broll  (and run its Python through the Resolve MCP)`);
 }
 // --- mcp -------------------------------------------------------------------------------

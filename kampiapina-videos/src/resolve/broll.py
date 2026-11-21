@@ -31,6 +31,8 @@ for i, x in enumerate(B["items"]):
     it = got[0]
     if x.get("rotation"):
         it.SetProperty("RotationAngle", x["rotation"])
+    if x.get("zoom", 1) != 1:
+        it.SetProperties({"ZoomX": x["zoom"], "ZoomY": x["zoom"]})
     g = x.get("group")
     if g and g in groups:
         it.AssignToColorGroup(groups[g])

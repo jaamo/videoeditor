@@ -58,7 +58,7 @@ All from the folder `kampiapina-videos/`, `npm run -s video -- <command> <name> 
 | `merge <name>` | `plan.part1.yaml` … `plan.partN.yaml` (a long video planned in parts) into `plan.yaml`, titles from the first and last part |
 | `check <name> [--plan <file>]` | the plan's errors and warnings, and what each segment says (`--plan`: a part of it) |
 | `build <name> [--force]` | the plan as `tmp/build.json` (and the timeline template), and prints the Resolve script to run |
-| `broll <name> [--max-len 10] [--gap 4] [--shift 240] [--talk]` | a b-roll pass on the timeline as it is (after `mcp dump`): the usable sections of the second camera (`analysis/broll-sections.json`, or `broll-sections.partN.json` merged) placed on V2 by real time, each where the A-roll shot at the same moment sits in the cut, in the first free slot, in ride order; writes `tmp/broll.json` and lists it. Stretches already on V2, the first 3 s, the main title's gap and the end are left alone; sections over `--max-len` s are cut to it; `--talk` keeps sections where the user talks to the camera |
+| `broll <name> [--max-len 10] [--gap 4] [--shift 240] [--talk]` | a b-roll pass on the timeline as it is (after `mcp dump`): the usable sections of the second camera (`analysis/broll-sections.json`, or `broll-sections.partN.json` merged) placed on V2 by real time, each where the A-roll shot at the same moment sits in the cut, in the first free slot, in ride order; writes `tmp/broll.json` and lists it. Stretches already in the cut (on any video track), the first 3 s, the main title's gap and the end are left alone; ride order is kept around what's on V2, doubles and items out of order already there are reported; sections over `--max-len` s are cut to it; `--talk` keeps sections where the user talks to the camera |
 | `mcp <name> <ingest [--all]\|build\|dump\|still\|broll> …` | prints the Python for the Resolve MCP (below); `ingest --all` transcribes the b-roll too, to find talk in it |
 
 ## Resolve, through the MCP
@@ -151,7 +151,13 @@ titles:                   # seconds of the A-roll, inside a segment
 - **Inserts**: where the words are about something the b-roll shows, while it's talked
   about, 2–8 s each; and over joins, which they hide. Pick the stretch of the b-roll that
   shows the thing (contact sheets, `frame <file> <s>`). Not over the first 3 s: the viewer
-  sees the speaker first. Don't use the same stretch of b-roll twice. Use the b-roll
+  sees the speaker first. **Never use the same stretch of b-roll twice**, nor a stretch that
+  is already in the cut on another track (a ride clip with talk on V1 shows its picture
+  there): the viewer notices footage they have seen. `check` rejects an insert that repeats
+  another's stretch; `broll` skips what is on any video track. **The video is chronological**,
+  the b-roll too: an insert is never from before the insert before it (by the files' real
+  times), whatever the words would want; `check` rejects an insert out of ride order, `broll`
+  keeps order around what is on V2 already and skips a section that has no room in order. Use the b-roll
   generously on a ride (POV talk is one picture for an hour): about one insert every 20–30 s
   of talk where there is footage, the same stretch of the ride first.
 - **The ride cam's angles are deliberate.** The user clamps the second camera under the
@@ -161,6 +167,14 @@ titles:                   # seconds of the A-roll, inside a segment
   judge them after the rotation they need (`frame`, then look at it turned) and name it;
   the planner sets `rotation: 180` (or 90 / -90) on the insert. Only a lens covered by a
   glove, a blur or a swing is unusable.
+- **Vertical shots.** Some clips are shot with the camera held upright: the whole file is a
+  vertical video stored as a 16:9 frame lying on its side (the horizon runs up the frame,
+  the road from side to side; the top of the scene points left or right in every tile).
+  Identify these per file, not per stretch: every section of such a file gets the same
+  `rotation` (90 or -90), none stays 0. Turned up, the picture would stand as a pillar, so
+  the tool zooms it to fill the frame (1.778, the frame's aspect, on top of any punch-in):
+  the middle of the tall picture is what shows, judge the shot by its middle. From a 4K file
+  the fill is sharp; from 1080p a little soft, still better than a pillar.
 - **The intro and the main title**: the talk opens with "Morjesta pöytään" and one or two
   sentences on what the video is about; then the main title (`titles.main`): the talk
   stops in the quiet after that sentence, the title plays (4.75 s, its jingle already
@@ -201,8 +215,10 @@ Learned on `tekoaly-ja-politiikka` (a chest cam + a hand-held ride cam, 97 clips
 - **A b-roll pass later**: once the user has cut the A-roll by hand, b-roll is added without
   touching V1: `mcp dump` (the timeline as it is), the analyzer lists every usable section of
   the second camera with its rotation (`broll-sections.json`, in parts for many files), then
-  `broll` places them on V2 by real time and `mcp broll` appends them. Run it again after
-  more sections are found: what's on V2 already is skipped.
+  `broll` places them on V2 by real time (a ±90° section with the fill zoom) and `mcp broll` appends them. Run it again after
+  more sections are found: what's in the cut already, on any video track, is skipped, so no
+  stretch is ever used twice, and every section lands after the V2 items shot before it and
+  before those shot after, so the ride stays in order (a section with no room there is skipped).
 - **Wind**: on a bike the voice track never goes quiet, so `silences.json` is empty and
   `check` warns "voice is loud" at every cut: cut by the word times and accept those
   warnings; the face stretches (camera near the mouth) do have real quiet.

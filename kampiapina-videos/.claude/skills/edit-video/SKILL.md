@@ -61,7 +61,8 @@ b-roll-sections mode, one agent per 10–15 b-roll files in parallel, each writi
 `analysis/broll-sections.partN.json` (every usable section with the rotation it needs; the
 ride cam's angles are deliberate, see reference.md). Then `npm run -s video -- broll <name>`
 (the placement on V2 by real time, listed), `npm run -s video -- mcp <name> broll` through
-the MCP, and a `dump` again to confirm the count, that V1 is unchanged and that no stretch
+the MCP (each insert's sound goes with it on A4 at the minimum volume, linked, never
+dropped), and a `dump` again to confirm the count, that V1 is unchanged and that no stretch
 of a file is on the timeline twice and V2 is in ride order (`broll` reports both from the dump). Tell the user
 how many inserts went where (per ten minutes), how many are turned, and what to look at.
 

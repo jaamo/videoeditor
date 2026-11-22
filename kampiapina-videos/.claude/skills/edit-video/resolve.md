@@ -54,8 +54,12 @@ changing those scripts or writing a new one.
 - A clip turned ±90° (`RotationAngle`) shows as a pillar: `SetProperties({"ZoomX": 1.778, "ZoomY": 1.778})`
   on the same item fills the frame with the middle of the tall picture (zoom and rotation both
   centre on the frame).
+- A clip with its sound: with no `mediaType`, `trackIndex` names both the video and the audio
+  track, and audio 2 is the music, so the b-roll's picture (`mediaType` 1, track 2) and sound
+  (`mediaType` 2, track 4, same `recordFrame`) are appended separately and linked with
+  `Timeline.SetClipsLinked([picture, sound], True)`.
 - Punch-ins are `SetProperties({"ZoomX", "ZoomY"})`; fades `SetFades({"FadeIn", "FadeOut"})`
-  in frames; the volume `AudioVolume` in dB. Colour groups:
+  in frames; the volume `AudioVolume` in dB, -100 (the minimum, silent) to 30. Colour groups:
   `item.AssignToColorGroup(project.GetColorGroupsList()[i])`.
 - `Project.ExportCurrentFrameAsStill(path)` works after `Timeline.SetCurrentTimecode`;
   a drop-frame (29.97) timeline needs `;` timecodes (`timecode_at()` in common.py).

@@ -71,9 +71,11 @@ while tl.GetTrackCount("video") < 3:
     tl.AddTrack("video")
 while tl.GetTrackCount("audio") < 3:
     tl.AddTrack("audio")
+while tl.GetTrackCount("audio") < 4:
+    tl.AddTrack("audio")
 for i, n in ((1, "A-roll"), (2, "B-roll"), (3, "Titles")):
     tl.SetTrackName("video", i, n)
-for i, n in ((1, "Voice"), (2, "Music"), (3, "Jingle")):
+for i, n in ((1, "Voice"), (2, "Music"), (3, "Jingle"), (4, "B-roll")):
     tl.SetTrackName("audio", i, n)
 start = tl.GetStartFrame()
 
@@ -121,7 +123,7 @@ for a, item in zip(B["aroll"], placed):
     if a.get("rotation"):
         item.SetProperty("RotationAngle", a["rotation"])
 
-# B-roll, picture only.
+# B-roll: the picture on video 2, its sound on audio 4 at the minimum volume, linked (the user brings it up where wanted).
 if B["broll"]:
     infos = [{"mediaPoolItem": items[b["key"]], "startFrame": b["inF"], "endFrame": b["outF"], "trackIndex": 2, "recordFrame": start + b["atF"] + shift_at(b["atF"]), "mediaType": 1} for b in B["broll"]]
     placed_b = mp.AppendToTimeline(infos) or []
@@ -133,6 +135,12 @@ if B["broll"]:
             item.SetProperty("RotationAngle", b["rotation"])
         if b.get("zoom", 1) != 1:
             item.SetProperties({"ZoomX": b["zoom"], "ZoomY": b["zoom"]})
+        snd = mp.AppendToTimeline([{"mediaPoolItem": items[b["key"]], "startFrame": b["inF"], "endFrame": b["outF"], "trackIndex": 4, "recordFrame": item.GetStart(), "mediaType": 2}]) or []
+        if snd:
+            snd[0].SetProperties({"AudioVolume": -100.0})
+            tl.SetClipsLinked([item, snd[0]], True)
+        else:
+            warnings.append(f"no sound placed for the insert at {round((item.GetStart() - start) / fps, 1)} s")
 
 # The main title: its picture in the gap left for it on track 3, its jingle whole on audio 3, under the intro.
 main_end = 0

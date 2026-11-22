@@ -77,7 +77,7 @@ named in `project.yaml` if another is open.
 | `build` | the timeline from `tmp/build.json` (after `build <name>`). Refuses to replace a timeline of that name without `force` |
 | `dump` | the timeline as it is now, to `tmp/timeline.json` (every item: where, which frames of which file, group, zoom) |
 | `still <seconds>` | a frame of the cut as Resolve shows it, to `analysis/frames/cut-<s>.png` |
-| `broll` | appends `tmp/broll.json` (from `broll <name>`) on video track 2: picture only, turned as planned, in the camera's colour group; nothing else is touched. Writes `tmp/broll.result.json` as it goes |
+| `broll` | appends `tmp/broll.json` (from `broll <name>`) on video track 2, turned as planned, in the camera's colour group, each with its sound on **A4 B-roll** at the minimum volume (-100 dB), linked; nothing else is touched. Writes `tmp/broll.result.json` as it goes |
 
 ## Time
 
@@ -150,7 +150,8 @@ titles:                   # seconds of the A-roll, inside a segment
   zoom inside a sentence for no reason. The first piece is wide.
 - **Inserts**: where the words are about something the b-roll shows, while it's talked
   about, 2–8 s each; and over joins, which they hide. Pick the stretch of the b-roll that
-  shows the thing (contact sheets, `frame <file> <s>`). Not over the first 3 s: the viewer
+  shows the thing (contact sheets, `frame <file> <s>`). An insert keeps its sound, on A4,
+  turned down to the minimum, never dropped: the user raises it where it's wanted. Not over the first 3 s: the viewer
   sees the speaker first. **Never use the same stretch of b-roll twice**, nor a stretch that
   is already in the cut on another track (a ride clip with talk on V1 shows its picture
   there): the viewer notices footage they have seen. `check` rejects an insert that repeats
@@ -227,7 +228,8 @@ Learned on `tekoaly-ja-politiikka` (a chest cam + a hand-held ride cam, 97 clips
 
 Tracks: **V1 A-roll** (each piece with its voice linked on **A1 Voice**; a punched-in piece
 has Zoom 1.18 in the Inspector's Transform; a gap where the main title plays), **V2 B-roll**
-(picture only), **V3 Titles** (the main title's picture in the gap, Social links, Music by
+(each insert with its sound linked on **A4 B-roll**, at the minimum volume, -100 dB: the
+user brings a shot's sound up where it adds something, so it is never left out), **V3 Titles** (the main title's picture in the gap, Social links, Music by
 Kampiapina, and the end title over the last piece), **A2 Music** (the track at `musicDb`,
 with fades), **A3 Jingle** (the main title's sound, whole, at -10.5 dB, starting 4.75 s
 before its picture). Every clip is in its camera's colour group (Color page). The

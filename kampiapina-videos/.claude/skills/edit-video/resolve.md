@@ -61,6 +61,16 @@ changing those scripts or writing a new one.
 - Punch-ins are `SetProperties({"ZoomX", "ZoomY"})`; fades `SetFades({"FadeIn", "FadeOut"})`
   in frames; the volume `AudioVolume` in dB, -100 (the minimum, silent) to 30. Colour groups:
   `item.AssignToColorGroup(project.GetColorGroupsList()[i])`.
+- A 9:16 timeline (a short) is the same empty FCPXML at 1080×1920 plus `timelineResolutionWidth/Height`.
+  Resolve fits a 16:9 clip inside it (1080×607), so `ZoomX/ZoomY` 3.16 fills the frame with the
+  middle of the picture and a clip turned ±90° fills it at 1.778; `Pan`/`Tilt` (timeline pixels,
+  right / up) move the crop. A punch-in multiplies (3.16 × 1.18 = 3.73).
+- A bleep: the A-roll piece is split around the word (contiguous frames, no jump), the slice's
+  voice item gets `AudioVolume` -100 (the volume sits on the sound item, reached through
+  `GetLinkedItems()`), and the beep file is appended `mediaType` 2 on audio 3 for the slice's
+  length (its frames at the file's own `FPS`, as for music).
+- `AppendToTimeline` works on the open timeline: a build opens its own and ends with
+  `SetCurrentTimeline` back to the one the user had open; the b-roll pass does the same.
 - `Project.ExportCurrentFrameAsStill(path)` works after `Timeline.SetCurrentTimecode`;
   a drop-frame (29.97) timeline needs `;` timecodes (`timecode_at()` in common.py).
 - The dump (`timeline_dump()`) gives every item's place, source frames, group, zoom and

@@ -47,17 +47,28 @@ export function rotationFor(s: { rotation?: number }): number {
   const r = s.rotation ?? 0;
   return Math.abs(r) === 90 ? -r : 0;
 }
+/** The beep over a bleeped word (assets/beep.wav: 1 kHz, 3 s, -12 dBFS). */
+export const BEEP = path.resolve("assets", "beep.wav");
 /** A punch-in past this is soft from 4K on full HD. */
 const MAX_ZOOM = 1.6;
 /**
- * A 16:9 picture turned ±90° stands as a pillar in the frame; this zoom (the frame's aspect)
+ * A 16:9 picture turned ±90° stands as a pillar in a 16:9 frame; this zoom (the frame's aspect)
  * makes its width fill the frame, the middle of the tall picture showing.
  */
 export const FILL_ZOOM = Math.round((16 / 9) * 1000) / 1000;
-/** The zoom a piece needs on the timeline, its punch-in and, turned ±90°, the fill. */
-export function zoomFor(rotation: number, zoom = 1): number {
-  return Math.round(zoom * (rotation % 180 === 90 ? FILL_ZOOM : 1) * 1000) / 1000;
+/**
+ * The zoom that makes a 16:9 picture, turned `rotation` degrees, fill a `frame` (Resolve fits
+ * the picture inside the frame first, then turns it): 1 as shot on a 16:9 frame, 1.778 turned
+ * ±90° on it; on a 9:16 frame (a short) 3.16 as shot, 1.778 turned ±90°, the middle of the
+ * picture showing. Times `zoom`, the punch-in.
+ */
+export function zoomFor(rotation: number, zoom = 1, frame: { w: number; h: number } = { w: W, h: H }, src: { w: number; h: number } = { w: 16, h: 9 }): number {
+  const s = Math.min(frame.w / src.w, frame.h / src.h);
+  const [fw, fh] = rotation % 180 === 90 ? [src.h * s, src.w * s] : [src.w * s, src.h * s];
+  return Math.round(zoom * Math.max(frame.w / fw, frame.h / fh) * 1000) / 1000;
 }
+/** A short's frame: 9:16, 1080×1920. */
+export const SHORT = { w: 1080, h: 1920 };
 
 /**
  * The tool's registry of a video is `projects/<name>/project.yaml` (settings); everything
@@ -166,9 +177,19 @@ export type PlanSegment = {
    * in the hand and turned to the face: the file's 180° tag then turns the face upside down).
    */
   rotation?: number;
+  /** Timeline pixels to move the picture right/up, when the fill crop of a short should show another part of it. */
+  pan?: number;
+  tilt?: number;
   inserts?: Insert[];
 };
+/** A word to bleep: the voice goes silent there and a beep plays. Seconds of the A-roll file. */
+export type Beep = { file?: string; from: Time; to: Time; why?: string };
 export type Plan = {
+  /** `vertical`: a short, 1080×1920, every picture zoomed to fill the frame. Default: the video's 1920×1080. */
+  format?: "vertical";
+  /** The timeline's name in Resolve; default: the project's (project.yaml `resolve.timeline`, or the name). A short names its own. */
+  timeline?: string;
+  beeps?: Beep[];
   segments: PlanSegment[];
   /**
    * Where the titles go, seconds of the A-roll (of the segment the time falls in): `main` the
@@ -369,8 +390,9 @@ export function checkPlan(plan: Plan, summary: Summary, words: Record<string, Wo
     const v = t[k];
     if (v != null && !titleFile(v) && Object.keys(summary.aroll).length > 1) warn(`titles.${k}`, `several A-roll files: say which, as { file: <A-roll file>, at: <seconds> }`);
   }
-  if (t.main == null) warn("titles", "no main: the main title goes in the pause after the intro has said what the video is about (titles: { main: <A-roll seconds> })");
-  else {
+  if (t.main == null) {
+    if (plan.format !== "vertical") warn("titles", "no main: the main title goes in the pause after the intro has said what the video is about (titles: { main: <A-roll seconds> })");
+  } else {
     const hit = segmentAt(plan, summary, t.main);
     if (!hit) err("titles.main", `${clock(titleMs(t.main))} is in no segment: it must be a moment of the talk that's kept`);
     else {
@@ -382,8 +404,9 @@ export function checkPlan(plan: Plan, summary: Summary, words: Record<string, Wo
       else if (!lv && w) warn("titles.main", `in the middle of "${w.text}"`);
     }
   }
-  if (t.end == null) warn("titles", `no end: the end title starts where the sign-off starts and plays over it (titles: { end: <A-roll seconds> }); without it, ${END_OVERLAP} s before the last word`);
-  else {
+  if (t.end == null) {
+    if (plan.format !== "vertical") warn("titles", `no end: the end title starts where the sign-off starts and plays over it (titles: { end: <A-roll seconds> }); without it, ${END_OVERLAP} s before the last word`);
+  } else {
     const hit = segmentAt(plan, summary, t.end);
     if (!hit) err("titles.end", `${clock(titleMs(t.end))} is in no segment`);
     else {
@@ -410,9 +433,12 @@ export type Build = {
   media: { key: string; path: string; group?: string }[];
   /** Timeline frames from its start; source frames of the file (`outF` exclusive). */
   /** `rotation`: degrees to turn the clip on the timeline (Resolve's Rotation Angle), when the file is stored sideways. */
-  aroll: { key: string; inF: number; outF: number; atF: number; lenF: number; zoom: number; rotation?: number; why?: string }[];
-  /** `zoom`: with a ±90° rotation, the fill that makes the turned picture's width fill the frame. */
+  /** `db`: the voice's volume when not as recorded (-100 silences a bleeped word); `pan`/`tilt` in timeline pixels. */
+  aroll: { key: string; inF: number; outF: number; atF: number; lenF: number; zoom: number; rotation?: number; db?: number; pan?: number; tilt?: number; why?: string }[];
+  /** `zoom`: the fill of the frame when the picture needs one (turned ±90°, or any picture on a short). */
   broll: { key: string; inF: number; outF: number; atF: number; rotation?: number; zoom?: number; why?: string }[];
+  /** Beeps over bleeped words: `sound` is the beep file, placed on audio track 3 at `atF` for `lenF` frames. */
+  beeps?: { sound: string; items: { atF: number; lenF: number }[] };
   /**
    * The main title (a timeline in the template's bin): its picture on track 3 at `atF`, in a gap
    * of the talk, `from`–`to` seconds of the title's own timeline; the whole of it as sound
@@ -430,9 +456,13 @@ export type Build = {
   lengthF: number;
 };
 
-export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p: Paths }): Build {
+export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p: Paths; planFile?: string }): Build {
   const { plan, summary, settings, p } = o;
   const fps = summary.fps;
+  const frame = plan.format === "vertical" ? SHORT : { w: W, h: H };
+  const short = plan.format === "vertical";
+  const planBase = o.planFile ? path.basename(o.planFile).replace(/\.ya?ml$/, "") : "plan";
+  const isMain = planBase === "plan";
   const fr = (ms: number) => Math.round((ms / 1000) * fps);
   const media = new Map<string, Build["media"][number]>();
   const use = (s: Source) => {
@@ -447,16 +477,16 @@ export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p
   const hasMusic = !!music && existsSync(music);
 
   // The talk in pieces: the segments, the one the main title falls in split there, since the talk stops for the title.
-  type Piece = { seg: number; main: Source; fromMs: number; toMs: number; zoom: number; rotation: number; inserts: Insert[]; why?: string };
+  type Piece = { seg: number; main: Source; fromMs: number; toMs: number; zoom: number; rotation: number; inserts: Insert[]; why?: string; db?: number; pan?: number; tilt?: number };
   const mainHit = on("main") && plan.titles?.main != null ? segmentAt(plan, summary, plan.titles.main) : undefined;
   const endHit = on("end") && plan.titles?.end != null ? segmentAt(plan, summary, plan.titles.end) : undefined;
   const pieces: Piece[] = [];
   let titleBefore: number | undefined;
   plan.segments.forEach((s, i) => {
     const main = arollOf(s, summary)!;
-    const piece: Piece = { seg: i, main, fromMs: msOf(s.from), toMs: msOf(s.to), zoom: s.zoom ?? 1, rotation: s.rotation ?? 0, inserts: s.inserts ?? [], ...(s.why ? { why: s.why } : {}) };
+    const piece: Piece = { seg: i, main, fromMs: msOf(s.from), toMs: msOf(s.to), zoom: s.zoom ?? 1, rotation: s.rotation ?? 0, inserts: s.inserts ?? [], ...(s.why ? { why: s.why } : {}), ...(s.pan ? { pan: s.pan } : {}), ...(s.tilt ? { tilt: s.tilt } : {}) };
     if (mainHit?.i !== i) {
-      pieces.push(piece);
+      pieces.push(...bleeped(piece));
       return;
     }
     const t = Math.min(Math.max(mainHit.ms, piece.fromMs), piece.toMs);
@@ -466,8 +496,27 @@ export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p
     if (piece.toMs - t >= 300) pieces.push({ ...piece, fromMs: t, inserts: piece.inserts.filter((x) => msOf(x.at) >= t) });
   });
 
+  // A bleeped word: the piece is split around it, the word's slice silent (the frames run on: no jump), a beep over it.
+  function bleeped(piece: Piece): Piece[] {
+    const hits = (plan.beeps ?? [])
+      .filter((b) => (b.file ?? piece.main.key) === piece.main.key)
+      .map((b) => ({ from: Math.max(msOf(b.from), piece.fromMs), to: Math.min(msOf(b.to), piece.toMs) }))
+      .filter((b) => b.to > b.from)
+      .sort((a, b) => a.from - b.from);
+    if (!hits.length) return [piece];
+    const out: Piece[] = [];
+    let at = piece.fromMs;
+    for (const h of hits) {
+      if (h.from > at) out.push({ ...piece, fromMs: at, toMs: h.from, inserts: piece.inserts.filter((x) => msOf(x.at) >= at && msOf(x.at) < h.from) });
+      out.push({ ...piece, fromMs: Math.max(at, h.from), toMs: h.to, db: -100, inserts: [] });
+      at = h.to;
+    }
+    if (piece.toMs > at) out.push({ ...piece, fromMs: at, toMs: piece.toMs, inserts: piece.inserts.filter((x) => msOf(x.at) >= at) });
+    return out;
+  }
   const gapF = fr((MAIN_TITLE.pictureTo - MAIN_TITLE.pictureFrom) * 1000);
   const aroll: Build["aroll"] = [];
+  const beeps: { atF: number; lenF: number }[] = [];
   const broll: Build["broll"] = [];
   let at = 0;
   let mainAtF: number | undefined;
@@ -484,7 +533,8 @@ export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p
     const len = fr(s.toMs - s.fromMs);
     if (outF - inF <= 0 || len <= 0) continue;
     const rot = (((rotationFor(s.main) + s.rotation) % 360) + 360) % 360;
-    aroll.push({ key: s.main.key, inF, outF, atF: at, lenF: len, zoom: zoomFor(rot, s.zoom), ...(rot ? { rotation: rot } : {}), ...(s.why ? { why: s.why } : {}) });
+    aroll.push({ key: s.main.key, inF, outF, atF: at, lenF: len, zoom: zoomFor(rot, s.zoom, frame), ...(rot ? { rotation: rot } : {}), ...(s.db != null ? { db: s.db } : {}), ...(s.pan ? { pan: s.pan } : {}), ...(s.tilt ? { tilt: s.tilt } : {}), ...(s.why ? { why: s.why } : {}) });
+    if (s.db != null && s.db <= -100) beeps.push({ atF: at, lenF: len });
     if (endHit && endHit.i === s.seg && endHit.ms >= s.fromMs - 50 && endHit.ms <= s.toMs + 50) endAtF = at + fr(Math.min(Math.max(endHit.ms, s.fromMs), s.toMs) - s.fromMs);
     for (const x of s.inserts) {
       const src = summary.broll[x.file];
@@ -497,7 +547,8 @@ export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p
       // The b-roll's own frames: as many as the timeline shows, at its own rate.
       const srcN = Math.round((n / fps) * src.fps);
       const brot = (((rotationFor(src) + (x.rotation ?? 0)) % 360) + 360) % 360;
-      broll.push({ key: x.file, inF: a, outF: a + srcN, atF, ...(brot ? { rotation: brot, zoom: zoomFor(brot) } : {}), ...(x.why ? { why: x.why } : {}) });
+      const bzoom = zoomFor(brot, 1, frame);
+      broll.push({ key: x.file, inF: a, outF: a + srcN, atF, ...(brot ? { rotation: brot } : {}), ...(bzoom !== 1 ? { zoom: bzoom } : {}), ...(x.why ? { why: x.why } : {}) });
     }
     at += len;
   }
@@ -523,12 +574,13 @@ export function buildOf(o: { plan: Plan; summary: Summary; settings: Settings; p
   if (on("end")) titles.push({ name: nameOf("end"), track: 3, atF: endAtF ?? Math.max(0, at - fr(END_OVERLAP * 1000)), end: true });
   return {
     project: settings.resolve?.project ?? p.name,
-    timeline: settings.resolve?.timeline ?? p.name,
-    fps, width: W, height: H, fcpxml: p.fcpxml,
+    timeline: plan.timeline ?? (isMain ? settings.resolve?.timeline ?? p.name : planBase),
+    fps, width: frame.w, height: frame.h, fcpxml: isMain ? p.fcpxml : path.join(p.tmp, `${planBase}.fcpxml`),
     media: [...media.values()],
     aroll, broll: broll.sort((a, b) => a.atF - b.atF),
-    ...(main ? { main } : {}),
-    titles,
+    ...(beeps.length ? { beeps: { sound: BEEP, items: beeps } } : {}),
+    ...(main && !short ? { main } : {}),
+    titles: short ? [] : titles,
     ...(hasMusic
       ? { music: { path: music, durationMs: durationOf(music), db: settings.musicDb ?? MUSIC_DB, atF: mainAtF == null ? 0 : Math.max(0, mainAtF - fr(MAIN_TITLE.musicLead * 1000)), fadeInF: fr(1000), fadeOutF: fr(3000) } }
       : {}),

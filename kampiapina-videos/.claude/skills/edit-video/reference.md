@@ -56,10 +56,10 @@ All from the folder `kampiapina-videos/`, `npm run -s video -- <command> <name> 
 | `level <name> <from> <to> [file]` | the voice's loudness (dBFS) every 50 ms, at most 30 s: where a word really starts and ends. Speech is about -20, quiet under -45; a cut where it's over -38 is heard |
 | `sync <name> [<b-roll file> …] [--at <offset>] [--any]` | two cameras: the clock offset between them from the sound (each b-roll clip against the other camera's A-roll, looked for within 90 min of the two cameras' first files, `--any`: anywhere; `--at`: score a given offset too). Prints the candidate offsets with their evidence (which clip pairs correlate); confirm the best one with a sentence both cameras caught or a frame of each at the same moment, then put it in `project.yaml`'s `clocks` and `analyze` again. With `clocks` set, says per b-roll clip whether the A-roll was rolling then (a second angle) or not (talk only it has: sort it `aroll`) |
 | `merge <name>` | `plan.part1.yaml` … `plan.partN.yaml` (a long video planned in parts) into `plan.yaml`, titles from the first and last part |
-| `check <name> [--plan <file>]` | the plan's errors and warnings, and what each segment says (`--plan`: a part of it) |
-| `build <name> [--force]` | the plan as `tmp/build.json` (and the timeline template), and prints the Resolve script to run |
+| `check <name> [--plan <file>]` | the plan's errors and warnings, and what each segment says (`--plan`: a part of it, or a short's plan) |
+| `build <name> [--force] [--plan <file>]` | the plan as `tmp/build.json` (and the timeline template), and prints the Resolve script to run. `--plan short-x.yaml`: that plan's own `tmp/short-x.build.json` and timeline |
 | `broll <name> [--max-len 10] [--gap 4] [--shift 240] [--talk]` | a b-roll pass on the timeline as it is (after `mcp dump`): the usable sections of the second camera (`analysis/broll-sections.json`, or `broll-sections.partN.json` merged) placed on V2 by real time, each where the A-roll shot at the same moment sits in the cut, in the first free slot, in ride order; writes `tmp/broll.json` and lists it. Stretches already in the cut (on any video track), the first 3 s, the main title's gap and the end are left alone; ride order is kept around what's on V2, doubles and items out of order already there are reported; sections over `--max-len` s are cut to it; `--talk` keeps sections where the user talks to the camera |
-| `mcp <name> <ingest [--all]\|build\|dump\|still\|broll> …` | prints the Python for the Resolve MCP (below); `ingest --all` transcribes the b-roll too, to find talk in it |
+| `mcp <name> <ingest [--all]\|build\|dump\|still\|broll> …` | prints the Python for the Resolve MCP (below); `ingest --all` transcribes the b-roll too, to find talk in it; `build --plan <file>` and `dump --timeline <name>` for a short |
 
 ## Resolve, through the MCP
 
@@ -75,7 +75,7 @@ named in `project.yaml` if another is open.
 |---|---|
 | `ingest` | imports the footage into the Footage bin and the music into Music, sets the transcription language, transcribes each A-roll file and writes `analysis/<stem>.transcript.json` (words in ms of the file). Transcribing a long clip outlasts the MCP's timeout: Resolve goes on in the background, so **run it again** after a minute until `written` lists every A-roll file and `pending` is empty |
 | `build` | the timeline from `tmp/build.json` (after `build <name>`). Refuses to replace a timeline of that name without `force` |
-| `dump` | the timeline as it is now, to `tmp/timeline.json` (every item: where, which frames of which file, group, zoom) |
+| `dump` | the timeline as it is now, to `tmp/timeline.json` (every item: where, which frames of which file, group, zoom, volume); `--timeline <name>` another timeline of the project, to `tmp/<name>.timeline.json` |
 | `still <seconds>` | a frame of the cut as Resolve shows it, to `analysis/frames/cut-<s>.png` |
 | `broll` | appends `tmp/broll.json` (from `broll <name>`) on video track 2, turned as planned, in the camera's colour group, each with its sound on **A4 B-roll** at the minimum volume (-100 dB), linked; nothing else is touched. Writes `tmp/broll.result.json` as it goes |
 
@@ -104,8 +104,11 @@ projects/<name>/
     findings.md         the analyzer's notes (it returns them, the skill saves them)
     broll-sections.json / broll-sections.partN.json   every usable section of the b-roll, for a b-roll pass: [{ file, from, to, rotation, what, talk? }] in seconds of the file; rotation 0 / 90 / -90 / 180 is what the picture needs to stand upright; talk marks the user talking to that camera
   plan.yaml             the first cut
-  tmp/                  build.json, timeline.fcpxml, timeline.json
+  short-<slug>.yaml     a short's plan (format: vertical), one per short
+  tmp/                  build.json, timeline.fcpxml, timeline.json; <plan>.build.json, <plan>.fcpxml, <name>.timeline.json for a short
 ```
+
+The beep over a bleeped word is `assets/beep.wav` in the tool (1 kHz, 3 s), imported into a Sound bin.
 
 ## plan.yaml
 
@@ -124,10 +127,17 @@ segments:                 # played in this order, one after another
         until: 16.5
         from: 4.2         # seconds into the b-roll's own file (default 0)
         why: the chain he's talking about
+    pan: 0                # timeline pixels to move the picture right / up, when a short's crop should show another part of it
+    tilt: 0
 titles:                   # seconds of the A-roll, inside a segment
   main: 20.94             # the pause after the intro has said what the video is about: the talk stops here for the main title
   end: 941.60             # where the sign-off starts: the end title plays over it
   # with several A-roll files, say which:  end: { file: P1004771.MOV, at: 941.60 }
+# A short (its own file, short-<slug>.yaml):
+format: vertical          # 1080×1920; every picture zoomed to fill the frame (3.16 on a 16:9 shot, 1.78 on one turned ±90°), no titles, no music
+timeline: short-eksyksissa   # the timeline's name in Resolve (default: the plan file's name)
+beeps:                    # words to bleep: the voice is silent there (-100 dB), a beep plays on audio 3; the segment is split around the word, no jump
+  - { file: P1004769.MOV, from: 130.62, to: 131.7, why: helvetti }
 ```
 
 ## Editing rules
@@ -223,6 +233,26 @@ Learned on `tekoaly-ja-politiikka` (a chest cam + a hand-held ride cam, 97 clips
 - **Wind**: on a bike the voice track never goes quiet, so `silences.json` is empty and
   `check` warns "voice is loud" at every cut: cut by the word times and accept those
   warnings; the face stretches (camera near the mouth) do have real quiet.
+
+## Shorts
+
+A short is a separate timeline from the same footage: 9:16 (1080×1920), 30–70 s, one
+thought or one running gag, cut tight, no brand titles, no music. Its plan is a
+`short-<slug>.yaml` with `format: vertical` and `timeline:`; `check`, `build` and `mcp build`
+take it with `--plan`, and the user's open timeline comes back when the build is done. The
+rules of the long cut hold (tight, punch-ins over joins, b-roll in ride order, never twice):
+
+- **The frame**: every picture is zoomed to fill 9:16, so a 16:9 shot shows its middle
+  third (the road ahead, the face in the hand-held stretches); a shot turned ±90° fills it
+  exactly, so vertical shots are made for this. `pan`/`tilt` move the crop when the middle
+  is the wrong part. The chest cam's 1080p is soft at this crop; the 4K ride cam is sharp.
+- **The hook first**: open on the line that names the thing (the swear word, the claim),
+  end on the punchline; a montage (the day's lost moments) stays in the day's order.
+- **Bleeps**: swearing in a short is bleeped with `beeps` (the word's own times from
+  `transcript.json`, a few hundredths either side), the picture runs on.
+- **Ideas** come from the findings: a route story (lost, a bog, pushing), one strong claim
+  of the talk (an existential crisis, a rule the channel keeps), a visual run (the ride
+  cam's angles). Offer three, say what each is in a line, let the user swap.
 
 ## The Resolve timeline
 

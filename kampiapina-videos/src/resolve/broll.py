@@ -14,6 +14,9 @@ if not tl:
     raise RuntimeError(f'No timeline "{ARGS["timeline"]}" in {project.GetName()}')
 with open(ARGS["items"], encoding="utf-8") as f:
     B = json.load(f)
+was_open = project.GetCurrentTimeline()
+if not was_open or was_open.GetName() != tl.GetName():
+    project.SetCurrentTimeline(tl)  # AppendToTimeline works on the open timeline
 fps = float(tl.GetSetting("timelineFrameRate")); start = tl.GetStartFrame()
 while tl.GetTrackCount("video") < 2:
     tl.AddTrack("video")
@@ -51,4 +54,6 @@ for i, x in enumerate(B["items"]):
     if i % 10 == 0:
         save(True)
 save(False)
+if was_open and was_open.GetName() != tl.GetName():
+    project.SetCurrentTimeline(was_open)
 result = {"placed": len(placed), "failed": failed, "v2": len(tl.GetItemListInTrack("video", 2) or []), "noSound": sum(1 for p in placed if not p["sound"])}

@@ -54,6 +54,7 @@ if old:
         n += 1
     old.SetName(f"{name} (old {n})")
     warnings.append(f'the timeline before is now "{name} (old {n})"')
+was_open = project.GetCurrentTimeline()
 mp.SetCurrentFolder(root)
 tl = mp.ImportTimelineFromFile(B["fcpxml"], {"timelineName": name, "importSourceClips": False})
 if not tl:
@@ -75,7 +76,7 @@ while tl.GetTrackCount("audio") < 4:
     tl.AddTrack("audio")
 for i, n in ((1, "A-roll"), (2, "B-roll"), (3, "Titles")):
     tl.SetTrackName("video", i, n)
-for i, n in ((1, "Voice"), (2, "Music"), (3, "Jingle"), (4, "B-roll")):
+for i, n in ((1, "Voice"), (2, "Music"), (3, "Beeps" if B.get("beeps") else "Jingle"), (4, "B-roll")):
     tl.SetTrackName("audio", i, n)
 start = tl.GetStartFrame()
 
@@ -122,6 +123,15 @@ for a, item in zip(B["aroll"], placed):
         item.SetProperties({"ZoomX": a["zoom"], "ZoomY": a["zoom"]})
     if a.get("rotation"):
         item.SetProperty("RotationAngle", a["rotation"])
+    if a.get("pan") or a.get("tilt"):
+        item.SetProperties({"Pan": float(a.get("pan", 0)), "Tilt": float(a.get("tilt", 0))})
+    if a.get("db") is not None:
+        # The voice is linked to the picture: the volume goes on the sound item.
+        for linked in [item] + (item.GetLinkedItems() or []):
+            try:
+                linked.SetProperties({"AudioVolume": float(a["db"])})
+            except Exception:
+                pass
 
 # B-roll: the picture on video 2, its sound on audio 4 at the minimum volume, linked (the user brings it up where wanted).
 if B["broll"]:
@@ -141,6 +151,25 @@ if B["broll"]:
             tl.SetClipsLinked([item, snd[0]], True)
         else:
             warnings.append(f"no sound placed for the insert at {round((item.GetStart() - start) / fps, 1)} s")
+
+# Beeps over the bleeped words: the beep file (imported into a Sound bin) on audio 3, as long as the silenced slice.
+if B.get("beeps"):
+    sbin = bin_named(mp, root, "Sound")
+    mp.SetCurrentFolder(sbin)
+    bkey = os.path.basename(B["beeps"]["sound"])
+    beep = clips_in(sbin).get(bkey)
+    if not beep:
+        mp.ImportMedia([B["beeps"]["sound"]])
+        beep = clips_in(sbin).get(bkey)
+    mp.SetCurrentFolder(root)
+    if not beep:
+        warnings.append(f"the beep {bkey} could not be imported: the bleeped words are silent, no beep")
+    else:
+        bfps = float(beep.GetClipProperty("FPS") or fps)
+        for x in B["beeps"]["items"]:
+            got = mp.AppendToTimeline([{"mediaPoolItem": beep, "startFrame": 0, "endFrame": max(1, round(x["lenF"] / fps * bfps)), "trackIndex": 3, "recordFrame": start + x["atF"] + shift_at(x["atF"]), "mediaType": 2}]) or []
+            if not got:
+                warnings.append(f"a beep at {round(x['atF'] / fps, 1)} s was not placed")
 
 # The main title: its picture in the gap left for it on track 3, its jingle whole on audio 3, under the intro.
 main_end = 0
@@ -201,6 +230,9 @@ if music_item and B.get("music"):
 if groupless:
     warnings.append(f"no colour group for {', '.join(sorted(groupless))}: the camera is unknown")
 d = timeline_dump(tl)
+# The timeline the user had open before comes back.
+if was_open and was_open.GetName() != name:
+    project.SetCurrentTimeline(was_open)
 result = {"timeline": name, "fps": fps, "lengthS": d["lengthS"], "items": {k: len(v) for k, v in d["tracks"].items()}, "warnings": warnings}
 # A long build outlasts the MCP's timeout: the result is written next to build.json too (tmp/build.result.json).
 with open(os.path.join(os.path.dirname(ARGS["build"]), "build.result.json"), "w", encoding="utf-8") as f:

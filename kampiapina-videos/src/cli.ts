@@ -6,7 +6,7 @@
 //   npm run video -- level <name> <from> <to> [file]   the voice's loudness, to cut in the quiet
 //   npm run video -- sync <name> [<b-roll file> …]   two cameras: the clock offset between them from the sound, and which b-roll clips have talk the A-roll doesn't
 //   npm run video -- merge <name>               plan.part1.yaml … plan.partN.yaml (a long video planned in parts) into plan.yaml
-//   npm run video -- check <name> [--plan <file>]   the plan's problems (--plan: another file than plan.yaml, e.g. a part of it)
+//   npm run video -- check <name> [--plan <file>]   the plan's problems (--plan: another file than plan.yaml: a part of it, or a short's plan)
 //   npm run video -- broll <name> [--max-len 10] [--gap 4] [--shift 240]   a b-roll pass on the timeline as it is (after mcp dump): the usable sections of analysis/broll-sections*.json placed on V2 by real time, as tmp/broll.json
 //   npm run video -- build <name> [--force]     the plan as tmp/build.json, and the Resolve script to run
 //   npm run video -- mcp <name> <ingest [--all]|build|dump|still|broll> [args…]   the Python to run through the Resolve MCP (--all: the b-roll transcribed too; broll: append tmp/broll.json on V2)
@@ -454,17 +454,29 @@ async function check() {
 
 // --- build -----------------------------------------------------------------------------
 
+/** The plan file named with --plan, or plan.yaml; a short's plan has its own build.json (tmp/<plan>.build.json) and timeline. */
+function planFile(): string {
+  const at = rest.indexOf("--plan");
+  return at >= 0 && rest[at + 1] ? path.resolve(p.dir, rest[at + 1]) : p.plan;
+}
+function buildFile(): string {
+  const f = planFile();
+  return f === p.plan ? p.build : path.join(p.tmp, `${path.basename(f).replace(/\.ya?ml$/, "")}.build.json`);
+}
+
 async function build() {
   const { summary, plan, words, settings } = await loadPlan();
+  const pf = planFile();
   const errors = checkPlan(plan, summary, words).filter((x) => x.level === "error");
-  if (errors.length) throw new Error(`The plan has errors: npm run video -- check ${name}\n${errors.map((e) => `  ${e.where}: ${e.what}`).join("\n")}`);
+  if (errors.length) throw new Error(`The plan has errors: npm run video -- check ${name}${pf === p.plan ? "" : ` --plan ${rel(pf)}`}\n${errors.map((e) => `  ${e.where}: ${e.what}`).join("\n")}`);
   await mkdir(p.tmp, { recursive: true });
-  const b = buildOf({ plan, summary, settings, p });
-  await writeFile(p.fcpxml, emptyFcpxml(b.timeline, b.fps, b.width, b.height));
-  await writeFile(p.build, JSON.stringify(b, null, 1));
-  log(`${rel(p.build)}: ${b.aroll.length} A-roll pieces, ${b.broll.length} inserts, ${b.main ? "the main title, " : ""}${b.titles.length} titles, ${clock((b.lengthF / b.fps) * 1000)}${b.music ? ", music" : ""}`);
+  const b = buildOf({ plan, summary, settings, p, planFile: pf });
+  const out = buildFile();
+  await writeFile(b.fcpxml, emptyFcpxml(b.timeline, b.fps, b.width, b.height));
+  await writeFile(out, JSON.stringify(b, null, 1));
+  log(`${rel(out)}: timeline "${b.timeline}" ${b.width}×${b.height}, ${b.aroll.length} A-roll pieces, ${b.broll.length} inserts, ${b.beeps ? `${b.beeps.items.length} beeps, ` : ""}${b.main ? "the main title, " : ""}${b.titles.length} titles, ${clock((b.lengthF / b.fps) * 1000)}${b.music ? ", music" : ""}`);
   log(`\nNow run this through the Resolve MCP (run_script_unsafe, timeout 60):\n`);
-  log(bootstrap("build", { build: p.build, force: rest.includes("--force") }));
+  log(bootstrap("build", { build: out, force: rest.includes("--force") }));
 }
 
 // --- broll -----------------------------------------------------------------------------
@@ -531,14 +543,20 @@ async function mcp() {
       }));
       return;
     }
-    case "build":
-      if (!existsSync(p.build)) throw new Error(`No ${rel(p.build)}: npm run video -- build ${name}`);
-      log(bootstrap("build", { build: p.build, force: args.includes("--force") }));
+    case "build": {
+      const out = buildFile();
+      if (!existsSync(out)) throw new Error(`No ${rel(out)}: npm run video -- build ${name}${out === p.build ? "" : ` --plan ${rel(planFile())}`}`);
+      log(bootstrap("build", { build: out, force: args.includes("--force") }));
       return;
-    case "dump":
+    }
+    case "dump": {
+      // --timeline <name>: another timeline of the project (a short), dumped to tmp/<name>.timeline.json.
+      const t = args.indexOf("--timeline");
+      const tlName = t >= 0 && args[t + 1] ? args[t + 1] : timeline;
       await mkdir(p.tmp, { recursive: true });
-      log(bootstrap("dump", { project, timeline, out: path.join(p.tmp, "timeline.json") }));
+      log(bootstrap("dump", { project, timeline: tlName, out: path.join(p.tmp, tlName === timeline ? "timeline.json" : `${tlName}.timeline.json`) }));
       return;
+    }
     case "broll": {
       const items = path.join(p.tmp, "broll.json");
       if (!existsSync(items)) throw new Error(`No ${rel(items)}: npm run video -- broll ${name}`);
@@ -574,10 +592,9 @@ async function saveSettings(s: Settings) {
 }
 
 async function loadPlan() {
-  const at = rest.indexOf("--plan");
-  const planFile = at >= 0 && rest[at + 1] ? path.resolve(p.dir, rest[at + 1]) : p.plan;
+  const planFile_ = planFile();
   if (!existsSync(p.summary)) throw new Error(`No ${rel(p.summary)}: npm run video -- analyze ${name}`);
-  if (!existsSync(planFile)) throw new Error(`No ${rel(planFile)}: the planner writes it`);
+  if (!existsSync(planFile_)) throw new Error(`No ${rel(planFile_)}: the planner writes it`);
   const summary = await readJson<Summary>(p.summary);
   const words: Record<string, Word[]> = {};
   for (const key of Object.keys(summary.aroll)) {
@@ -585,5 +602,5 @@ async function loadPlan() {
     if (!existsSync(f)) throw new Error(`No ${rel(f)}: run the ingest script in Resolve (npm run video -- mcp ${name} ingest), then analyze`);
     words[key] = await readJson<Word[]>(f);
   }
-  return { summary, plan: await readYaml<Plan>(planFile), words, settings: await loadSettings() };
+  return { summary, plan: await readYaml<Plan>(planFile_), words, settings: await loadSettings() };
 }

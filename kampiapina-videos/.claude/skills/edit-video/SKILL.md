@@ -66,6 +66,18 @@ dropped), and a `dump` again to confirm the count, that V1 is unchanged and that
 of a file is on the timeline twice and V2 is in ride order (`broll` reports both from the dump). Tell the user
 how many inserts went where (per ten minutes), how many are turned, and what to look at.
 
+## Shorts
+
+"Make three vertical shorts from this": read the findings (and the transcripts for word
+times), pick the moments (a running gag of the ride, a strong claim, a rule of the channel;
+see reference.md's Shorts), write one `short-<slug>.yaml` per short with `format: vertical`,
+`timeline:` and, for swearing, `beeps`; `check --plan`, `build --plan`, then `mcp build
+--plan` through the Resolve MCP for each, one after another (the build opens its timeline
+and gives the user's back at the end), and `mcp dump --timeline <name>` to confirm the frame
+(1080×1920), the zooms, the silenced words and the beeps. Never touch the main timeline.
+Tell the user each short's idea, length and the moments in it, and that the chest cam's
+1080p is soft at the 9:16 crop.
+
 ## Re-edits
 
 A change before the user has touched the timeline ("keep the second take", "move that
